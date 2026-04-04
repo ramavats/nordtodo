@@ -36,7 +36,7 @@ createRoot(document.getElementById("root")!).render(
             border: "1px solid #434C5E",
             borderRadius: "8px",
             fontSize: "0.875rem",
-            fontFamily: "Inter, sans-serif",
+            fontFamily: '"Space Grotesk", sans-serif',
             padding: "10px 16px",
             boxShadow: "0 8px 24px rgba(46,52,64,0.6)",
           },

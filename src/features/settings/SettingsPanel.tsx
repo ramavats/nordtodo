@@ -15,6 +15,7 @@ export function SettingsPanel() {
   const { data: prefs } = usePreferences();
   const updatePrefs = useUpdatePreferences();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const [autoSyncInput, setAutoSyncInput] = useState("0");
 
   // ── Google Tasks integration state ────────────────────────────────────────
   const [googleStatus, setGoogleStatus] = useState<IntegrationStatus | null>(null);
@@ -37,6 +38,10 @@ export function SettingsPanel() {
   useEffect(() => {
     if (activeTab === "integrations") loadGoogleStatus();
   }, [activeTab, loadGoogleStatus]);
+
+  useEffect(() => {
+    setAutoSyncInput(String(prefs?.autoSyncSeconds ?? 0));
+  }, [prefs?.autoSyncSeconds]);
 
   const handleGoogleConnect = async () => {
     if (!googleClientId.trim() || !googleClientSecret.trim()) {
@@ -270,6 +275,7 @@ export function SettingsPanel() {
                   ["Search", "Ctrl+F"],
                   ["Toggle sidebar", "Ctrl+\\"],
                   ["Settings", "Ctrl+,"],
+                  ["Sync integrations", "Ctrl+Shift+G"],
                   ["Navigate list", "↑ / ↓"],
                   ["Open task", "Enter"],
                   ["Complete task", "Space"],
@@ -285,6 +291,26 @@ export function SettingsPanel() {
 
             {activeTab === "integrations" && (
               <div className="space-y-6">
+                <SettingRow
+                  label="Auto sync interval (seconds)"
+                  description="Set 0 to disable automatic pull + push sync."
+                >
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={autoSyncInput}
+                    onChange={(e) => setAutoSyncInput(e.target.value)}
+                    onBlur={() => {
+                      const parsed = Number.parseInt(autoSyncInput, 10);
+                      const safe = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+                      setAutoSyncInput(String(safe));
+                      updatePrefs.mutate({ autoSyncSeconds: safe });
+                    }}
+                    className="w-24 text-sm bg-surface-3 border border-border rounded-lg px-3 py-1.5 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    aria-label="Auto sync seconds"
+                  />
+                </SettingRow>
 
                 {/* ── Google Tasks ── */}
                 <div className="rounded-xl border border-border bg-surface-2 overflow-hidden">
@@ -563,3 +589,4 @@ function Toggle({
     </button>
   );
 }
+

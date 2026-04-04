@@ -7,7 +7,7 @@ import type { Task } from "@/types";
 // Helper to reset store between tests
 function resetStore() {
   useAppStore.setState({
-    activeView: "inbox",
+    activeView: "today",
     activeTaskId: null,
     isDetailPanelOpen: false,
     isSearchOpen: false,
@@ -16,7 +16,7 @@ function resetStore() {
     isQuickAddFocused: false,
     quickAddValue: "",
     filters: {
-      tags: [], priority: null, search: "", sortBy: "sort_order", sortDir: "asc", showCompleted: false
+      tags: [], priority: null, search: "", sortBy: "due_at", sortDir: "asc", showCompleted: false
     },
     isSettingsOpen: false,
     showOnboarding: false,
@@ -62,7 +62,7 @@ describe("AppStore", () => {
     useAppStore.getState().setFilters({ priority: "high" });
     expect(useAppStore.getState().filters.priority).toBe("high");
     // Other filters unchanged
-    expect(useAppStore.getState().filters.sortBy).toBe("sort_order");
+    expect(useAppStore.getState().filters.sortBy).toBe("due_at");
   });
 });
 

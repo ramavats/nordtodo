@@ -8,6 +8,7 @@ import { useAppStore } from "@/store/appStore";
 import { CreateTaskSchema, type CreateTaskInput, type Priority } from "@/types";
 import { cn } from "@/lib/utils";
 import { priorityConfig } from "@/lib/utils";
+import { DateTimePicker } from "@/components/ui/DateTimePicker";
 
 const QUICK_PRIORITIES: Priority[] = ["urgent", "high", "medium", "none"];
 
@@ -16,6 +17,7 @@ export function QuickAdd() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedPriority, setSelectedPriority] = useState<Priority>("none");
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
+  const [selectedDueAt, setSelectedDueAt] = useState<string | null>(new Date().toISOString());
 
   const createTask = useCreateTask();
   const { setQuickAddFocused } = useAppStore();
@@ -52,14 +54,16 @@ export function QuickAdd() {
       await createTask.mutateAsync({
         ...data,
         priority: selectedPriority,
+        dueAt: selectedDueAt ?? undefined,
       });
       reset();
       setIsExpanded(false);
       setSelectedPriority("none");
+      setSelectedDueAt(new Date().toISOString());
       setShowPriorityPicker(false);
       inputRef.current?.blur();
     },
-    [createTask, selectedPriority, reset]
+    [createTask, selectedPriority, selectedDueAt, reset]
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -67,12 +71,14 @@ export function QuickAdd() {
       reset();
       setIsExpanded(false);
       setSelectedPriority("none");
+      setSelectedDueAt(new Date().toISOString());
       setShowPriorityPicker(false);
       inputRef.current?.blur();
     }
   };
 
   const handleFocus = () => {
+    setSelectedDueAt((v) => v ?? new Date().toISOString());
     setIsExpanded(true);
     setQuickAddFocused(true);
   };
@@ -182,6 +188,7 @@ export function QuickAdd() {
                     reset();
                     setIsExpanded(false);
                     setSelectedPriority("none");
+                    setSelectedDueAt(new Date().toISOString());
                   }}
                   className="p-1 rounded text-text-faint hover:text-text hover:bg-surface-2 transition-colors"
                   data-testid="quick-add-cancel"
@@ -204,6 +211,31 @@ export function QuickAdd() {
             >
               {errors.title.message}
             </motion.p>
+          )}
+        </AnimatePresence>
+
+        {/* Due date/time picker */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="overflow-hidden border-t border-border"
+            >
+              <div className="px-3 py-2">
+                <div className="flex items-center gap-1.5 text-xs text-text-faint mb-1.5">
+                  <Calendar size={11} />
+                  <span>Due date</span>
+                </div>
+                <DateTimePicker
+                  value={selectedDueAt}
+                  onChange={(iso) => setSelectedDueAt(iso ?? new Date().toISOString())}
+                  placeholder="Pick due date"
+                />
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
 

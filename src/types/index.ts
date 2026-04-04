@@ -163,6 +163,7 @@ export const UserPreferencesSchema = z.object({
   sortDir: z.string(),
   showCompleted: z.boolean(),
   compactMode: z.boolean(),
+  autoSyncSeconds: z.number(),
 });
 export type UserPreferences = z.infer<typeof UserPreferencesSchema>;
 

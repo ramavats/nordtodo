@@ -271,6 +271,15 @@ impl TaskRepository {
             };
         }
 
+        macro_rules! add_nullable_field {
+            ($field:expr, $val:expr) => {
+                if let Some(v) = $val {
+                    params_vec.push(Box::new(v));
+                    sets.push(format!("{} = ?{}", $field, params_vec.len()));
+                }
+            };
+        }
+
         macro_rules! add_opt_field {
             ($field:expr, $val:expr) => {
                 if let Some(v) = $val {
@@ -281,8 +290,8 @@ impl TaskRepository {
         }
 
         add_field!("title", input.title.clone());
-        add_field!("description", input.description.clone());
-        add_field!("notes", input.notes.clone());
+        add_nullable_field!("description", input.description.clone());
+        add_nullable_field!("notes", input.notes.clone());
 
         if let Some(ref s) = input.status {
             let v = s.to_db_str().to_string();
@@ -312,6 +321,7 @@ impl TaskRepository {
         if let Some(v) = input.is_pinned { params_vec.push(Box::new(v as i32)); sets.push(format!("is_pinned = ?{}", params_vec.len())); }
         if let Some(v) = input.is_today { params_vec.push(Box::new(v as i32)); sets.push(format!("is_today = ?{}", params_vec.len())); }
         if let Some(v) = input.sort_order { params_vec.push(Box::new(v)); sets.push(format!("sort_order = ?{}", params_vec.len())); }
+        add_nullable_field!("estimate_minutes", input.estimate_minutes);
 
         if let Some(ref rr) = input.recurrence_rule {
             params_vec.push(Box::new(rr.clone()));

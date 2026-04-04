@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use uuid::Uuid;
 
 /// Task priority levels, ordered by urgency
@@ -214,18 +214,26 @@ pub struct CreateTaskInput {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateTaskInput {
     pub title: Option<String>,
-    pub description: Option<String>,
+    #[serde(default, deserialize_with = "de_nullable_string_patch")]
+    pub description: Option<Option<String>>,
     pub status: Option<TaskStatus>,
     pub priority: Option<Priority>,
+    #[serde(default, deserialize_with = "de_nullable_datetime_patch")]
     pub due_at: Option<Option<DateTime<Utc>>>,
+    #[serde(default, deserialize_with = "de_nullable_datetime_patch")]
     pub start_at: Option<Option<DateTime<Utc>>>,
+    #[serde(default, deserialize_with = "de_nullable_datetime_patch")]
     pub reminder_at: Option<Option<DateTime<Utc>>>,
+    #[serde(default, deserialize_with = "de_nullable_datetime_patch")]
     pub snoozed_until: Option<Option<DateTime<Utc>>>,
     pub is_archived: Option<bool>,
     pub is_pinned: Option<bool>,
     pub is_today: Option<bool>,
+    #[serde(default, deserialize_with = "de_nullable_i32_patch")]
     pub estimate_minutes: Option<Option<i32>>,
-    pub notes: Option<String>,
+    #[serde(default, deserialize_with = "de_nullable_string_patch")]
+    pub notes: Option<Option<String>>,
+    #[serde(default, deserialize_with = "de_nullable_string_patch")]
     pub recurrence_rule: Option<Option<String>>,
     pub tags: Option<Vec<String>>,
     pub sort_order: Option<i64>,
@@ -272,4 +280,67 @@ pub enum BulkAction {
     Delete,
     SetPriority(Priority),
     SetToday(bool),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::UpdateTaskInput;
+
+    #[test]
+    fn update_input_deserializes_explicit_null_as_clear() {
+        let input: UpdateTaskInput = serde_json::from_str(r#"{ "dueAt": null }"#).unwrap();
+        assert!(matches!(input.due_at, Some(None)));
+    }
+
+    #[test]
+    fn update_input_deserializes_missing_field_as_noop() {
+        let input: UpdateTaskInput = serde_json::from_str(r#"{}"#).unwrap();
+        assert!(input.due_at.is_none());
+    }
+}
+fn de_nullable_datetime_patch<'de, D>(deserializer: D) -> Result<Option<Option<DateTime<Utc>>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw = serde_json::Value::deserialize(deserializer)?;
+    match raw {
+        serde_json::Value::Null => Ok(Some(None)),
+        serde_json::Value::String(s) => {
+            let dt = DateTime::parse_from_rfc3339(&s)
+                .map(|d| d.with_timezone(&Utc))
+                .map_err(serde::de::Error::custom)?;
+            Ok(Some(Some(dt)))
+        }
+        _ => Err(serde::de::Error::custom("expected RFC3339 string or null")),
+    }
+}
+
+fn de_nullable_string_patch<'de, D>(deserializer: D) -> Result<Option<Option<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw = serde_json::Value::deserialize(deserializer)?;
+    match raw {
+        serde_json::Value::Null => Ok(Some(None)),
+        serde_json::Value::String(s) => Ok(Some(Some(s))),
+        _ => Err(serde::de::Error::custom("expected string or null")),
+    }
+}
+
+fn de_nullable_i32_patch<'de, D>(deserializer: D) -> Result<Option<Option<i32>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw = serde_json::Value::deserialize(deserializer)?;
+    match raw {
+        serde_json::Value::Null => Ok(Some(None)),
+        serde_json::Value::Number(n) => {
+            let v = n
+                .as_i64()
+                .ok_or_else(|| serde::de::Error::custom("expected integer"))?;
+            let i = i32::try_from(v).map_err(serde::de::Error::custom)?;
+            Ok(Some(Some(i)))
+        }
+        _ => Err(serde::de::Error::custom("expected integer or null")),
+    }
 }

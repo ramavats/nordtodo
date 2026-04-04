@@ -18,7 +18,7 @@ use crate::errors::AppError;
 use crate::integrations::oauth::{
     build_auth_url, exchange_code, refresh_access_token,
 };
-use crate::integrations::google::GoogleTasksAdapter;
+use crate::integrations::google::{GoogleSourceMeta, GoogleTasksAdapter};
 use crate::repositories::TaskRepository;
 
 // The redirect URI registered in Google Cloud Console.
@@ -139,8 +139,8 @@ fn save_credentials(conn: &rusqlite::Connection, creds: &GoogleCredentials, emai
     Ok(())
 }
 
-/// Ensure we have a valid (non-expired) access token, refreshing if needed.
-fn get_valid_token(conn: &rusqlite::Connection, creds: &mut GoogleCredentials, client_id: &str) -> Result<String, AppError> {
+/// Refresh access token if needed. Returns true when a refresh happened.
+fn refresh_token_if_needed(creds: &mut GoogleCredentials, client_id: &str) -> Result<bool, AppError> {
     // Check expiry
     let expired = creds.expires_at.as_ref().map(|exp| {
         DateTime::parse_from_rfc3339(exp)
@@ -148,22 +148,39 @@ fn get_valid_token(conn: &rusqlite::Connection, creds: &mut GoogleCredentials, c
             .unwrap_or(true)
     }).unwrap_or(false);
 
-    if expired {
-        let refresh = creds.refresh_token.as_deref().ok_or_else(|| {
-            AppError::Unauthorized("No refresh token — please reconnect Google Tasks".to_string())
-        })?;
-
-        let token_resp = refresh_access_token(client_id, &creds.client_secret, refresh)?;
-        creds.access_token = token_resp.access_token.clone();
-        if let Some(exp_in) = token_resp.expires_in {
-            creds.expires_at = Some(
-                (Utc::now() + chrono::Duration::seconds(exp_in)).to_rfc3339()
-            );
-        }
-        save_credentials(conn, creds, None)?;
+    if !expired {
+        return Ok(false);
     }
 
-    Ok(creds.access_token.clone())
+    let refresh = creds.refresh_token.as_deref().ok_or_else(|| {
+        AppError::Unauthorized("No refresh token - please reconnect Google Tasks".to_string())
+    })?;
+
+    let token_resp = refresh_access_token(client_id, &creds.client_secret, refresh)?;
+    creds.access_token = token_resp.access_token.clone();
+    if let Some(exp_in) = token_resp.expires_in {
+        creds.expires_at = Some(
+            (Utc::now() + chrono::Duration::seconds(exp_in)).to_rfc3339()
+        );
+    }
+
+    Ok(true)
+}
+
+fn is_remote_task_gone_or_inaccessible(err: &AppError) -> bool {
+    match err {
+        AppError::Integration(msg) => {
+            let m = msg.to_lowercase();
+            m.contains(" 403")
+                || m.contains("forbidden")
+                || m.contains("permission_denied")
+                || m.contains(" 404")
+                || m.contains("not found")
+                || m.contains(" 410")
+                || m.contains("gone")
+        }
+        _ => false,
+    }
 }
 
 use chrono::DateTime;
@@ -264,28 +281,42 @@ pub fn google_disconnect(db: State<DbConnection>) -> Result<(), AppError> {
 /// - Pushes local tasks with source=GoogleCalendar that changed (push)
 /// - Marks completed tasks as completed on both sides
 #[tauri::command]
-pub fn sync_google_tasks(db: State<DbConnection>) -> Result<SyncResult, AppError> {
-    let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
-    let client_id = get_client_id(&conn)?;
+pub async fn sync_google_tasks(db: State<'_, DbConnection>) -> Result<SyncResult, AppError> {
+    let db = db.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || sync_google_tasks_inner(&db))
+        .await
+        .map_err(|e| AppError::Internal(format!("Sync worker failed: {e}")))?
+}
 
-    let mut creds = load_credentials(&conn)?
-        .ok_or_else(|| AppError::Unauthorized("Google Tasks not connected".to_string()))?;
+fn sync_google_tasks_inner(db: &DbConnection) -> Result<SyncResult, AppError> {
+    let (client_id, mut creds) = {
+        let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+        let client_id = get_client_id(&conn)?;
+        let creds = load_credentials(&conn)?
+            .ok_or_else(|| AppError::Unauthorized("Google Tasks not connected".to_string()))?;
+        (client_id, creds)
+    };
 
-    let access_token = get_valid_token(&conn, &mut creds, &client_id)?;
+    let refreshed = refresh_token_if_needed(&mut creds, &client_id)?;
+    if refreshed {
+        let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+        save_credentials(&conn, &creds, None)?;
+    }
+
+    let access_token = creds.access_token.clone();
 
     let list_id = creds.default_list_id.as_deref()
-        .ok_or_else(|| AppError::Integration("No default list ID — try disconnecting and reconnecting".to_string()))?
+        .ok_or_else(|| AppError::Integration("No default list ID - try disconnecting and reconnecting".to_string()))?
         .to_string();
 
     let adapter = GoogleTasksAdapter::new(client_id);
-    let repo = TaskRepository;
     let now = Utc::now().to_rfc3339();
 
     let mut imported = 0i64;
     let mut updated = 0i64;
     let mut pushed = 0i64;
 
-    // ── PULL: fetch all remote tasks ──────────────────────────────────────────
+    // Pull remote tasks and upsert locally.
     let remote_tasks = adapter.fetch_tasks(&access_token, &list_id, None)?;
 
     for g_task in &remote_tasks {
@@ -293,107 +324,234 @@ pub fn sync_google_tasks(db: State<DbConnection>) -> Result<SyncResult, AppError
             Some(id) => id.clone(),
             None => continue,
         };
+        let is_remote_deleted = g_task.deleted.unwrap_or(false);
 
-        // Check if we already have this task by source_metadata remote_id
-        let existing: rusqlite::Result<(String, String)> = conn.query_row(
-            "SELECT id, status FROM tasks
-             WHERE source = 'google_calendar'
-             AND json_extract(source_metadata, '$.remote_id') = ?1
-             AND status != 'deleted'
-             LIMIT 1",
-            rusqlite::params![remote_id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        );
+        let existing: rusqlite::Result<(
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            String,
+            Option<String>,
+            String,
+            Option<String>,
+        )> = {
+            let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+            conn.query_row(
+                "SELECT id, title, notes, due_at, status, completed_at, updated_at, last_synced_at FROM tasks
+                 WHERE source = 'google_calendar'
+                 AND json_extract(source_metadata, '$.remote_id') = ?1
+                 AND status != 'deleted'
+                 LIMIT 1",
+                rusqlite::params![remote_id],
+                |row| Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                    row.get(6)?,
+                    row.get(7)?,
+                )),
+            )
+        };
 
         match existing {
-            Ok((local_id, local_status)) => {
-                // Task exists — sync status if remote changed
-                let remote_status = match g_task.status.as_deref() {
-                    Some("completed") => "completed",
-                    _ => "pending",
-                };
-                if remote_status != local_status {
-                    conn.execute(
-                        "UPDATE tasks SET status = ?1, updated_at = ?2 WHERE id = ?3",
-                        rusqlite::params![remote_status, now, local_id],
-                    )
-                    .map_err(|e| AppError::Database(e.to_string()))?;
+            Ok((local_id, local_title, local_notes, local_due_at, local_status, local_completed_at, local_updated_at, local_last_synced_at)) => {
+                if is_remote_deleted {
+                    let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+                    TaskRepository.soft_delete(&conn, &local_id)?;
                     updated += 1;
+                    continue;
+                }
+
+                let has_local_unsynced_edits = local_last_synced_at
+                    .as_ref()
+                    .map(|synced| local_updated_at > *synced)
+                    .unwrap_or(true);
+                if has_local_unsynced_edits {
+                    continue;
+                }
+
+                let mapped = adapter.map_to_local(g_task, &list_id);
+                let remote_title = mapped.title;
+                let remote_notes = mapped.notes;
+                let remote_due_at = mapped.due_at.map(|d| d.to_rfc3339());
+                let remote_status = mapped.status.to_db_str().to_string();
+                let remote_completed_at = mapped.completed_at.map(|d| d.to_rfc3339());
+
+                let changed = local_title != remote_title
+                    || local_notes != remote_notes
+                    || local_due_at != remote_due_at
+                    || local_status != remote_status
+                    || local_completed_at != remote_completed_at;
+
+                if changed {
+                    let meta = GoogleSourceMeta {
+                        remote_id: remote_id.clone(),
+                        list_id: list_id.clone(),
+                        etag: None,
+                    };
+                    let meta_json = serde_json::to_string(&meta)
+                        .map_err(|e| AppError::Integration(format!("Metadata serialize error: {e}")))?;
+
+                    let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+                    conn.execute(
+                            "UPDATE tasks
+                             SET title = ?1,
+                                 notes = ?2,
+                                 due_at = ?3,
+                                 status = ?4,
+                                 completed_at = ?5,
+                                 source = 'google_calendar',
+                                 source_metadata = ?6,
+                                 sync_status = 'synced',
+                                 last_synced_at = ?7,
+                                 updated_at = ?8
+                             WHERE id = ?9",
+                            rusqlite::params![
+                                remote_title,
+                                remote_notes,
+                                remote_due_at,
+                                remote_status,
+                                remote_completed_at,
+                                meta_json,
+                                now,
+                                now,
+                                local_id,
+                            ],
+                        )
+                        .map_err(|e| AppError::Database(e.to_string()))?;
+                    updated += 1;
+                } else {
+                    let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+                    conn.execute(
+                            "UPDATE tasks SET sync_status = 'synced', last_synced_at = ?1 WHERE id = ?2",
+                            rusqlite::params![now, local_id],
+                        )
+                        .map_err(|e| AppError::Database(e.to_string()))?;
                 }
             }
             Err(rusqlite::Error::QueryReturnedNoRows) => {
-                // New task — import it
+                if is_remote_deleted {
+                    continue;
+                }
                 let local_task = adapter.map_to_local(g_task, &list_id);
-                repo.insert(&conn, &local_task)?;
+                let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+                TaskRepository.insert(&conn, &local_task)?;
+                conn.execute(
+                        "UPDATE tasks SET sync_status = 'synced', last_synced_at = ?1 WHERE id = ?2",
+                        rusqlite::params![now, local_task.id],
+                    )
+                    .map_err(|e| AppError::Database(e.to_string()))?;
                 imported += 1;
             }
             Err(e) => return Err(AppError::Database(e.to_string())),
         }
     }
 
-    // ── PUSH: find local Google Tasks that need pushing ───────────────────────
-    // Tasks with source=google_calendar and sync_status='pending_push'
-    let pending_push: Vec<(String, Option<String>, String, String)> = {
+    // Push local-only tasks by creating them remotely.
+    let pending_create_ids: Vec<String> = {
+        let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
         let mut stmt = conn
             .prepare(
-                "SELECT id, source_metadata, title, status FROM tasks
-                 WHERE source = 'google_calendar'
-                 AND sync_status = 'pending_push'
+                "SELECT id FROM tasks
+                 WHERE source = 'local'
                  AND status != 'deleted'",
             )
             .map_err(|e| AppError::Database(e.to_string()))?;
 
-        let rows: Vec<_> = stmt.query_map([], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, Option<String>>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-            ))
-        })
-        .map_err(|e| AppError::Database(e.to_string()))?
-        .filter_map(|r| r.ok())
-        .collect();
+        let rows = stmt.query_map([], |row| row.get::<_, String>(0))
+            .map_err(|e| AppError::Database(e.to_string()))?
+            .filter_map(|r| r.ok())
+            .collect();
         rows
     };
 
-    for (local_id, meta_json, title, status) in pending_push {
-        if let Some(meta_str) = meta_json {
-            if let Ok(meta) = serde_json::from_str::<serde_json::Value>(&meta_str) {
-                if let Some(remote_id) = meta["remote_id"].as_str() {
-                    let google_status = if status == "completed" { "completed" } else { "needsAction" };
-                    let patch = serde_json::json!({
-                        "title": title,
-                        "status": google_status,
-                    });
+    for local_id in pending_create_ids {
+        let task = {
+            let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+            TaskRepository.find_by_id(&conn, &local_id)?
+        };
+        let remote_id = adapter.create_remote_task(&access_token, &list_id, &task)?;
 
-                    let client = reqwest::blocking::Client::new();
-                    let _ = client
-                        .patch(format!(
-                            "https://tasks.googleapis.com/tasks/v1/lists/{list_id}/tasks/{remote_id}"
-                        ))
-                        .bearer_auth(&access_token)
-                        .json(&patch)
-                        .send();
+        let meta = GoogleSourceMeta {
+            remote_id,
+            list_id: list_id.clone(),
+            etag: None,
+        };
+        let meta_json = serde_json::to_string(&meta)
+            .map_err(|e| AppError::Integration(format!("Metadata serialize error: {e}")))?;
 
-                    conn.execute(
-                        "UPDATE tasks SET sync_status = 'synced', updated_at = ?1 WHERE id = ?2",
-                        rusqlite::params![now, local_id],
-                    )
-                    .map_err(|e| AppError::Database(e.to_string()))?;
-
-                    pushed += 1;
-                }
-            }
-        }
+        let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+        conn.execute(
+                "UPDATE tasks
+                 SET source = 'google_calendar',
+                     source_metadata = ?1,
+                     sync_status = 'synced',
+                     last_synced_at = ?2,
+                     updated_at = ?3
+                 WHERE id = ?4",
+                rusqlite::params![meta_json, now, now, local_id],
+            )
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        pushed += 1;
     }
 
-    // Update last_sync_at
-    conn.execute(
-        "UPDATE integration_accounts SET last_sync_at = ?1 WHERE provider = 'google_calendar'",
-        rusqlite::params![now],
-    )
-    .map_err(|e| AppError::Database(e.to_string()))?;
+    // Push linked tasks changed locally since last sync.
+    let pending_update_rows: Vec<(String, String)> = {
+        let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, source_metadata FROM tasks
+                 WHERE source = 'google_calendar'
+                 AND status != 'deleted'
+                 AND (last_synced_at IS NULL OR updated_at > last_synced_at)",
+            )
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let rows = stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+            .map_err(|e| AppError::Database(e.to_string()))?
+            .filter_map(|r| r.ok())
+            .collect();
+        rows
+    };
+
+    for (local_id, meta_json) in pending_update_rows {
+        let meta: GoogleSourceMeta = serde_json::from_str(&meta_json)
+            .map_err(|e| AppError::Integration(format!("Metadata parse error: {e}")))?;
+        let task = {
+            let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+            TaskRepository.find_by_id(&conn, &local_id)?
+        };
+        if let Err(err) = adapter.update_remote_task(&access_token, &meta.list_id, &meta.remote_id, &task) {
+            if is_remote_task_gone_or_inaccessible(&err) {
+                let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+                TaskRepository.soft_delete(&conn, &local_id)?;
+                updated += 1;
+                continue;
+            }
+            return Err(err);
+        }
+
+        let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+        conn.execute(
+                "UPDATE tasks SET sync_status = 'synced', last_synced_at = ?1, updated_at = ?2 WHERE id = ?3",
+                rusqlite::params![now, now, local_id],
+            )
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        pushed += 1;
+    }
+
+    {
+        let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+        conn.execute(
+            "UPDATE integration_accounts SET last_sync_at = ?1 WHERE provider = 'google_calendar'",
+            rusqlite::params![now],
+        )
+        .map_err(|e| AppError::Database(e.to_string()))?;
+    }
 
     Ok(SyncResult { imported, updated, pushed })
 }
@@ -417,3 +575,4 @@ fn fetch_google_email(access_token: &str) -> Result<String, AppError> {
         .map(|s| s.to_string())
         .ok_or_else(|| AppError::Integration("No email in userinfo response".to_string()))
 }
+

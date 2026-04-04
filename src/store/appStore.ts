@@ -62,14 +62,14 @@ const DEFAULT_FILTERS: FilterState = {
   tags: [],
   priority: null,
   search: "",
-  sortBy: "sort_order",
+  sortBy: "due_at",
   sortDir: "asc",
   showCompleted: false,
 };
 
 export const useAppStore = create<AppState>()(
   immer((set) => ({
-    activeView: "inbox",
+    activeView: "today",
     activeTaskId: null,
     isDetailPanelOpen: false,
     isSearchOpen: false,

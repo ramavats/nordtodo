@@ -27,6 +27,7 @@ pub struct GoogleTask {
     pub title: Option<String>,
     pub notes: Option<String>,
     pub status: Option<String>,     // "needsAction" | "completed"
+    pub deleted: Option<bool>,
     pub due: Option<String>,        // RFC3339
     pub completed: Option<String>,  // RFC3339 when completed
     pub updated: Option<String>,    // RFC3339 last update
@@ -116,6 +117,7 @@ impl GoogleTasksAdapter {
                 .query(&[
                     ("showCompleted", "true"),
                     ("showHidden", "true"),
+                    ("showDeleted", "true"),
                     ("maxResults", "100"),
                 ]);
 

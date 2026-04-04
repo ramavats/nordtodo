@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from "react";
+import { memo, useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Circle, CheckCircle2, Pin, RotateCcw, Flag, Calendar,
@@ -36,6 +36,17 @@ export const TaskCard = memo(function TaskCard({
   const overdue = isOverdue(task);
   const pCfg = priorityConfig[task.priority];
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const currentId = (e as CustomEvent<string>).detail;
+      if (currentId !== task.id) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("nordtodo:task-menu-open", handler as EventListener);
+    return () => document.removeEventListener("nordtodo:task-menu-open", handler as EventListener);
+  }, [task.id]);
+
   const handleComplete = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -60,9 +71,10 @@ export const TaskCard = memo(function TaskCard({
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
       whileHover={{ y: -1 }}
       className={cn(
-        "group relative flex items-start gap-3 px-3 py-2.5 rounded-lg",
+        "group relative flex items-start gap-3 px-3 py-2.5 rounded-lg overflow-visible",
         "cursor-pointer select-none",
         "border transition-all duration-150",
+        showMenu ? "z-40" : "z-0",
         isFocused
           ? "bg-surface-2 border-accent/40 shadow-task-hover"
           : isSelected
@@ -71,6 +83,7 @@ export const TaskCard = memo(function TaskCard({
         isCompleted && "opacity-60"
       )}
       onClick={() => {
+        setShowMenu(false);
         onFocus?.(task.id);
         onOpenDetail?.();
       }}
@@ -129,7 +142,7 @@ export const TaskCard = memo(function TaskCard({
         <div className="flex items-start gap-1.5">
           <span
             className={cn(
-              "text-sm leading-snug",
+              "text-base leading-snug",
               isCompleted
                 ? "line-through text-text-muted"
                 : "text-text"
@@ -152,7 +165,7 @@ export const TaskCard = memo(function TaskCard({
             {task.dueAt && (
               <span
                 className={cn(
-                  "flex items-center gap-1 text-xs",
+                  "flex items-center gap-1 text-sm",
                   overdue && !isCompleted ? "text-error" : "text-text-faint"
                 )}
               >
@@ -163,7 +176,7 @@ export const TaskCard = memo(function TaskCard({
 
             {/* Estimate */}
             {task.estimateMinutes && (
-              <span className="flex items-center gap-1 text-xs text-text-faint">
+              <span className="flex items-center gap-1 text-sm text-text-faint">
                 <Clock size={10} />
                 {task.estimateMinutes}m
               </span>
@@ -173,18 +186,18 @@ export const TaskCard = memo(function TaskCard({
             {task.tags.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="text-xs px-1.5 py-0 rounded bg-surface-3 text-text-faint"
+                className="text-sm px-1.5 py-0 rounded bg-surface-3 text-text-faint"
               >
                 {tag}
               </span>
             ))}
             {task.tags.length > 3 && (
-              <span className="text-xs text-text-faint">+{task.tags.length - 3}</span>
+              <span className="text-sm text-text-faint">+{task.tags.length - 3}</span>
             )}
 
             {/* Source badge (non-local) */}
             {task.source !== "local" && (
-              <span className="text-xs px-1.5 py-0 rounded bg-accent/10 text-accent">
+              <span className="text-sm px-1.5 py-0 rounded bg-accent/10 text-accent">
                 {sourceLabels[task.source] ?? task.source}
               </span>
             )}
@@ -193,7 +206,7 @@ export const TaskCard = memo(function TaskCard({
 
         {/* Notes preview */}
         {task.notes && !isCompleted && (
-          <p className="text-xs text-text-faint mt-1 truncate">{task.notes}</p>
+          <p className="text-sm text-text-faint mt-1 truncate">{task.notes}</p>
         )}
       </div>
 
@@ -202,7 +215,13 @@ export const TaskCard = memo(function TaskCard({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setShowMenu(!showMenu);
+            setShowMenu((prev) => {
+              const next = !prev;
+              if (next) {
+                document.dispatchEvent(new CustomEvent("nordtodo:task-menu-open", { detail: task.id }));
+              }
+              return next;
+            });
           }}
           className="p-1 rounded text-text-faint hover:text-text hover:bg-surface-3 transition-colors"
           aria-label="Task options"

@@ -17,6 +17,8 @@ pub struct UserPreferences {
     pub show_completed: bool,
     pub compact_mode: bool,
     #[serde(default)]
+    pub auto_sync_seconds: u32,
+    #[serde(default)]
     pub google_client_id: String,
     #[serde(default)]
     pub google_client_secret: String,
@@ -25,18 +27,19 @@ pub struct UserPreferences {
 impl Default for UserPreferences {
     fn default() -> Self {
         UserPreferences {
-            default_smart_view: "inbox".to_string(),
+            default_smart_view: "today".to_string(),
             sidebar_expanded: true,
             sidebar_width: 224,
             reduce_motion: false,
-            startup_view: "inbox".to_string(),
+            startup_view: "today".to_string(),
             theme: "nord".to_string(),
             local_only_mode: true,
             first_run_complete: false,
-            sort_by: "sort_order".to_string(),
+            sort_by: "due_at".to_string(),
             sort_dir: "asc".to_string(),
             show_completed: false,
             compact_mode: false,
+            auto_sync_seconds: 0,
             google_client_id: String::new(),
             google_client_secret: String::new(),
         }

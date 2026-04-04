@@ -83,7 +83,7 @@ pub async fn set_window_mode<R: Runtime>(
             window
                 .set_size(tauri::Size::Logical(tauri::LogicalSize {
                     width: 800.0,
-                    height: 600.0,
+                    height: 800.0,
                 }))
                 .map_err(|e| e.to_string())?;
 
