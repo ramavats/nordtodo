@@ -16,6 +16,8 @@ export function useGlobalKeyboard() {
     togglePalette,
     setSearchOpen,
     setSettingsOpen,
+    setProductiveMode,
+    productiveMode,
     isSearchOpen,
     isPaletteOpen,
     isDetailPanelOpen,
@@ -72,6 +74,19 @@ export function useGlobalKeyboard() {
       if (isMod && e.shiftKey && e.key === "H") {
         e.preventDefault();
         void hideWindow();
+        return;
+      }
+
+      // Cmd/Ctrl+Shift+P - Toggle Productive Mode
+      if (isMod && e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        const next = !productiveMode;
+        setProductiveMode(next);
+        void api.updatePreferences({ productiveMode: next })
+          .catch(() => {
+            toast.error("Failed to save Productive Mode preference");
+          });
+        toast(next ? "Productive Mode on" : "Productive Mode off", { id: "productive-mode" });
         return;
       }
 
@@ -137,7 +152,7 @@ export function useGlobalKeyboard() {
     [
       togglePalette, setSearchOpen, setSettingsOpen, toggleSidebar,
       isSearchOpen, isPaletteOpen, isDetailPanelOpen, closeDetailPanel,
-      toggleWindowMode, hideWindow,
+      toggleWindowMode, hideWindow, productiveMode, setProductiveMode,
     ]
   );
 

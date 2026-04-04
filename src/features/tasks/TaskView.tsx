@@ -1,18 +1,17 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { AnimatePresence, motion, LayoutGroup } from "framer-motion";
 import { useAppStore } from "@/store/appStore";
-import { useTaskList, useTaskCounts } from "@/hooks/useTasks";
+import { useTaskList } from "@/hooks/useTasks";
 import { useDebounce } from "@/hooks/useDebounce";
 import { QuickAdd } from "./QuickAdd";
 import { TaskCard } from "./TaskCard";
 import { TaskListHeader } from "./TaskListHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TaskSkeleton } from "@/components/ui/TaskSkeleton";
-import { cn } from "@/lib/utils";
 import type { TaskQuery } from "@/types";
 
 export function TaskView() {
-  const { activeView, filters, openDetailPanel } = useAppStore();
+  const { activeView, filters, openDetailPanel, productiveMode } = useAppStore();
   const [focusedId, setFocusedId] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(filters.search, 300);
@@ -30,7 +29,17 @@ export function TaskView() {
 
   const { data: tasks, isLoading, isError, error } = useTaskList(query);
 
-  const taskIds = tasks?.map((t) => t.id) ?? [];
+  const visibleTasks = useMemo(() => {
+    if (!tasks) return [];
+    if (activeView !== "today" || !productiveMode) return tasks;
+
+    // Daily flow: only show 5 items. Urgent/high items always get first slots.
+    const priorityFirst = tasks.filter((t) => t.priority === "urgent" || t.priority === "high");
+    const others = tasks.filter((t) => t.priority !== "urgent" && t.priority !== "high");
+    return [...priorityFirst, ...others].slice(0, 5);
+  }, [tasks, activeView, productiveMode]);
+
+  const taskIds = visibleTasks.map((t) => t.id);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -89,7 +98,7 @@ export function TaskView() {
               animate="show"
             >
               <AnimatePresence mode="popLayout">
-                {tasks.map((task) => (
+                {visibleTasks.map((task) => (
                   <TaskCard
                     key={task.id}
                     task={task}
@@ -100,6 +109,13 @@ export function TaskView() {
                 ))}
               </AnimatePresence>
             </motion.div>
+            {activeView === "today" && productiveMode && (
+              <div className="sticky bottom-2 mt-3 flex justify-center pointer-events-none">
+                <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full bg-accent/15 text-accent border border-accent/30">
+                  Productive Mode On
+                </span>
+              </div>
+            )}
           </LayoutGroup>
         )}
       </div>

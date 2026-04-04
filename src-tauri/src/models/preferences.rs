@@ -19,6 +19,8 @@ pub struct UserPreferences {
     #[serde(default)]
     pub auto_sync_seconds: u32,
     #[serde(default)]
+    pub productive_mode: bool,
+    #[serde(default)]
     pub google_client_id: String,
     #[serde(default)]
     pub google_client_secret: String,
@@ -40,6 +42,7 @@ impl Default for UserPreferences {
             show_completed: false,
             compact_mode: false,
             auto_sync_seconds: 0,
+            productive_mode: false,
             google_client_id: String::new(),
             google_client_secret: String::new(),
         }

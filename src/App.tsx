@@ -8,7 +8,7 @@ import { taskKeys } from "@/hooks/useTasks";
 import * as api from "@/lib/tauriApi";
 
 export default function App() {
-  const { setShowOnboarding, setActiveView } = useAppStore();
+  const { setShowOnboarding, setActiveView, setProductiveMode } = useAppStore();
   const { data: prefs } = usePreferences();
   const { mode: windowMode, enterSlimMode } = useWindowStore();
   const qc = useQueryClient();
@@ -27,6 +27,10 @@ export default function App() {
       setActiveView(prefs.startupView);
     }
   }, [prefs?.startupView]);
+
+  useEffect(() => {
+    setProductiveMode(prefs?.productiveMode ?? false);
+  }, [prefs?.productiveMode, setProductiveMode]);
 
   // Restore window mode on launch — if user had slim mode active last session,
   // re-apply the OS-level positioning (size + always-on-top) on startup.

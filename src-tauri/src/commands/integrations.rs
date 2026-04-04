@@ -12,7 +12,7 @@
 use tauri::State;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::Utc;
+use chrono::{SecondsFormat, Utc};
 use crate::db::DbConnection;
 use crate::errors::AppError;
 use crate::integrations::oauth::{
@@ -310,7 +310,8 @@ fn sync_google_tasks_inner(db: &DbConnection) -> Result<SyncResult, AppError> {
         .to_string();
 
     let adapter = GoogleTasksAdapter::new(client_id);
-    let now = Utc::now().to_rfc3339();
+    // Keep one canonical UTC format ("...Z") so SQL string/date comparisons are stable.
+    let now = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
 
     let mut imported = 0i64;
     let mut updated = 0i64;
@@ -507,7 +508,7 @@ fn sync_google_tasks_inner(db: &DbConnection) -> Result<SyncResult, AppError> {
                 "SELECT id, source_metadata FROM tasks
                  WHERE source = 'google_calendar'
                  AND status != 'deleted'
-                 AND (last_synced_at IS NULL OR updated_at > last_synced_at)",
+                 AND (last_synced_at IS NULL OR datetime(updated_at) > datetime(last_synced_at))",
             )
             .map_err(|e| AppError::Database(e.to_string()))?;
 

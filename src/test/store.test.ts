@@ -20,6 +20,7 @@ function resetStore() {
     },
     isSettingsOpen: false,
     showOnboarding: false,
+    productiveMode: false,
     selectedTaskIds: new Set(),
   });
 }

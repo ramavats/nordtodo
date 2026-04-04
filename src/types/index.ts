@@ -164,6 +164,7 @@ export const UserPreferencesSchema = z.object({
   showCompleted: z.boolean(),
   compactMode: z.boolean(),
   autoSyncSeconds: z.number(),
+  productiveMode: z.boolean(),
 });
 export type UserPreferences = z.infer<typeof UserPreferencesSchema>;
 

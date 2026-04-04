@@ -27,6 +27,7 @@ interface AppState {
 
   // Onboarding
   showOnboarding: boolean;
+  productiveMode: boolean;
 
   // Bulk selection
   selectedTaskIds: Set<string>;
@@ -52,6 +53,8 @@ interface AppState {
 
   setSettingsOpen: (open: boolean) => void;
   setShowOnboarding: (show: boolean) => void;
+  setProductiveMode: (enabled: boolean) => void;
+  toggleProductiveMode: () => void;
 
   toggleTaskSelection: (id: string) => void;
   selectAllTasks: (ids: string[]) => void;
@@ -80,6 +83,7 @@ export const useAppStore = create<AppState>()(
     filters: DEFAULT_FILTERS,
     isSettingsOpen: false,
     showOnboarding: false,
+    productiveMode: false,
     selectedTaskIds: new Set(),
 
     setActiveView: (view) =>
@@ -162,6 +166,16 @@ export const useAppStore = create<AppState>()(
     setShowOnboarding: (show) =>
       set((s) => {
         s.showOnboarding = show;
+      }),
+
+    setProductiveMode: (enabled) =>
+      set((s) => {
+        s.productiveMode = enabled;
+      }),
+
+    toggleProductiveMode: () =>
+      set((s) => {
+        s.productiveMode = !s.productiveMode;
       }),
 
     toggleTaskSelection: (id) =>

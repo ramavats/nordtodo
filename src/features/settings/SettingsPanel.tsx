@@ -11,7 +11,7 @@ import toast from "react-hot-toast";
 type SettingsTab = "general" | "appearance" | "keyboard" | "integrations" | "data" | "about";
 
 export function SettingsPanel() {
-  const { setSettingsOpen } = useAppStore();
+  const { setSettingsOpen, setProductiveMode } = useAppStore();
   const { data: prefs } = usePreferences();
   const updatePrefs = useUpdatePreferences();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
@@ -253,6 +253,19 @@ export function SettingsPanel() {
                 </SettingRow>
 
                 <SettingRow
+                  label="Productive mode"
+                  description="Limit Today view to the focused top 5 tasks. Shortcut: Ctrl+Shift+P"
+                >
+                  <Toggle
+                    checked={prefs.productiveMode}
+                    onChange={(v) => {
+                      setProductiveMode(v);
+                      updatePrefs.mutate({ productiveMode: v });
+                    }}
+                  />
+                </SettingRow>
+
+                <SettingRow
                   label="Local only mode"
                   description="Never connect to external services"
                 >
@@ -275,6 +288,7 @@ export function SettingsPanel() {
                   ["Search", "Ctrl+F"],
                   ["Toggle sidebar", "Ctrl+\\"],
                   ["Settings", "Ctrl+,"],
+                  ["Toggle Productive Mode", "Ctrl+Shift+P"],
                   ["Sync integrations", "Ctrl+Shift+G"],
                   ["Navigate list", "↑ / ↓"],
                   ["Open task", "Enter"],
