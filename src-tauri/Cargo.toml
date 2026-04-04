@@ -1,0 +1,89 @@
+[package]
+name = "nordtodo"
+version = "0.1.0"
+description = "Nord Todo — a minimalist, offline-first desktop task manager"
+authors = ["Nord Todo Contributors"]
+license = "MIT"
+repository = ""
+edition = "2021"
+rust-version = "1.85"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package.metadata.tauri]
+active = true
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the
+# crate name that is used for Tauri's generated binaries,
+# which also uses the crate name.
+name = "nordtodo_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+
+# SQLite
+rusqlite = { version = "0.31", features = ["bundled", "chrono"] }
+rusqlite_migration = { version = "1.2" }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID generation
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Regex for recurrence/natural language
+regex = "1"
+
+# Data validation helpers
+validator = { version = "0.18", features = ["derive"] }
+
+# HTTP client for Google Tasks API
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+
+# URL building
+url = "2"
+
+# Base64 for PKCE
+base64 = "0.22"
+
+# SHA2 for PKCE code challenge
+sha2 = "0.10"
+
+# URL encoding
+urlencoding = "2"
+
+[dev-dependencies]
+tempdir = "0.3"
+rstest = "0.18"
+
+[profile.release]
+# Optimize for binary size (Tauri recommendation)
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
