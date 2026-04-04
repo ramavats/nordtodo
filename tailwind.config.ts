@@ -50,7 +50,7 @@ export default {
           DEFAULT: nord.nord6,
           secondary: nord.nord5,
           muted: nord.nord4,
-          faint: nord.nord3,
+          faint: nord.nord13,
           inverse: nord.nord0,
         },
         border: {
@@ -159,9 +159,11 @@ export default {
         "focus-error": `0 0 0 2px ${nord.nord11}`,
         // Task card
         task: "0 1px 4px rgba(46,52,64,0.5), 0 0 0 1px rgba(76,86,106,0.3)",
-        "task-hover": "0 2px 8px rgba(46,52,64,0.6), 0 0 0 1px rgba(136,192,208,0.25)",
+        "task-hover":
+          "0 2px 8px rgba(46,52,64,0.6), 0 0 0 1px rgba(136,192,208,0.25)",
         // Command palette
-        palette: "0 20px 60px rgba(46,52,64,0.8), 0 0 0 1px rgba(76,86,106,0.4)",
+        palette:
+          "0 20px 60px rgba(46,52,64,0.8), 0 0 0 1px rgba(76,86,106,0.4)",
       },
 
       transitionTimingFunction: {

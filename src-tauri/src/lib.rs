@@ -14,6 +14,8 @@ mod services;
 mod integrations;
 
 use tauri::Manager;
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::menu::{Menu, MenuItem};
 use db::open_database;
 
 /// Main Tauri app setup and plugin registration.
@@ -43,6 +45,54 @@ pub fn run() {
 
             // Register DB as managed state — accessible in all commands
             app.manage(db);
+
+            // ── System Tray ──────────────────────────────────────────
+            // Right-click menu items
+            let show_item = MenuItem::with_id(app, "show", "Show Nord Todo", true, None::<&str>)
+                .expect("Failed to create tray menu item");
+            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)
+                .expect("Failed to create tray quit item");
+            let menu = Menu::with_items(app, &[&show_item, &quit_item])
+                .expect("Failed to create tray menu");
+
+            // Build tray icon
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().cloned().unwrap())
+                .tooltip("Nord Todo")
+                .menu(&menu)
+                .on_tray_icon_event(|tray, event| {
+                    // Left-click → toggle show/hide
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            if window.is_visible().unwrap_or(false) {
+                                let _ = window.hide();
+                            } else {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                })
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .build(app)
+                .expect("Failed to build tray icon");
 
             Ok(())
         })
@@ -78,7 +128,19 @@ pub fn run() {
             commands::google_status,
             commands::google_disconnect,
             commands::sync_google_tasks,
+            // Window management
+            commands::set_window_mode,
+            commands::hide_window,
+            commands::show_window,
         ])
+        // Intercept the window close button (X) — hide instead of quit.
+        // The app stays alive in the system tray. Use tray menu → Quit to exit.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .run(tauri::generate_context!())
         .expect("Error while running NordTodo application");
 }

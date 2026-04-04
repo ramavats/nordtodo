@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { useAppStore } from "@/store/appStore";
 import { useSidebarStore } from "@/store/sidebarStore";
+import { useWindowStore } from "@/store/windowStore";
 
 /**
  * Global keyboard shortcut handler.
@@ -18,6 +19,7 @@ export function useGlobalKeyboard() {
     isQuickAddFocused,
   } = useAppStore();
   const { toggle: toggleSidebar } = useSidebarStore();
+  const { toggleMode: toggleWindowMode, hideWindow } = useWindowStore();
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -55,6 +57,20 @@ export function useGlobalKeyboard() {
         return;
       }
 
+      // Cmd/Ctrl+Shift+S — Toggle slim/docked mode
+      if (isMod && e.shiftKey && e.key === "S") {
+        e.preventDefault();
+        void toggleWindowMode();
+        return;
+      }
+
+      // Cmd/Ctrl+Shift+H — Hide to system tray
+      if (isMod && e.shiftKey && e.key === "H") {
+        e.preventDefault();
+        void hideWindow();
+        return;
+      }
+
       // ── Non-input shortcuts ──────────────────────────────────
       if (!isInput) {
         // Escape — close open panels/palettes
@@ -75,6 +91,7 @@ export function useGlobalKeyboard() {
     [
       togglePalette, setSearchOpen, setSettingsOpen, toggleSidebar,
       isSearchOpen, isPaletteOpen, isDetailPanelOpen, closeDetailPanel,
+      toggleWindowMode, hideWindow,
     ]
   );
 

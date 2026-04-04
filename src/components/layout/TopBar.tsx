@@ -1,7 +1,8 @@
-import { Search, Command, Settings, PanelLeftOpen } from "lucide-react";
+import { Search, Command, Settings, PanelLeftOpen, PanelRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/store/appStore";
 import { useSidebarStore } from "@/store/sidebarStore";
+import { useWindowStore } from "@/store/windowStore";
 import { useTaskCounts } from "@/hooks/useTasks";
 import { cn, modKey } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ const SMART_VIEW_LABELS: Record<string, string> = {
 export function TopBar() {
   const { activeView, setPaletteOpen, setSearchOpen, setSettingsOpen } = useAppStore();
   const { toggle: toggleSidebar, expanded } = useSidebarStore();
+  const { enterSlimMode } = useWindowStore();
   const { data: counts } = useTaskCounts();
 
   const viewLabel = SMART_VIEW_LABELS[activeView] ?? activeView;
@@ -103,6 +105,21 @@ export function TopBar() {
           data-testid="topbar-settings-btn"
         >
           <Settings size={14} />
+        </button>
+
+        {/* Dock to side */}
+        <button
+          onClick={enterSlimMode}
+          className={cn(
+            "p-1.5 rounded-md",
+            "text-text-muted hover:text-accent hover:bg-accent/10",
+            "transition-colors"
+          )}
+          title={`Dock to side (${modKey()}+Shift+S)`}
+          aria-label="Dock to side panel"
+          data-testid="topbar-slim-btn"
+        >
+          <PanelRight size={14} />
         </button>
       </div>
     </header>

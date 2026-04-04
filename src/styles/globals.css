@@ -313,3 +313,28 @@ kbd {
 .quick-add-input:focus {
   outline: none;
 }
+
+/* ============================================================
+   SLIM / DOCKED MODE OVERRIDES
+   Applied via [data-window-mode="slim"] on the root element.
+   ============================================================ */
+
+/* Hide horizontal scrollbar in slim pill strip */
+.slim-mode .scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.slim-mode .scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Compact task rows in slim mode */
+.slim-mode [data-testid="task-row"] {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+/* Slightly smaller text in slim mode task list */
+.slim-mode [data-testid="task-title"] {
+  font-size: 0.8125rem;
+}

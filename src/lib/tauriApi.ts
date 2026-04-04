@@ -190,3 +190,24 @@ export async function googleDisconnect(): Promise<void> {
 export async function syncGoogleTasks(): Promise<SyncResult> {
   return invoke<SyncResult>("sync_google_tasks");
 }
+
+// ============================================================
+// WINDOW MANAGEMENT COMMANDS
+// ============================================================
+
+export type WindowMode = "normal" | "slim";
+
+/** Resize + reposition the OS window for slim or normal mode. */
+export async function setWindowMode(mode: WindowMode): Promise<void> {
+  return invoke<void>("set_window_mode", { mode });
+}
+
+/** Hide the OS window (app keeps running in background). */
+export async function hideWindow(): Promise<void> {
+  return invoke<void>("hide_window");
+}
+
+/** Show and focus the OS window. */
+export async function showWindow(): Promise<void> {
+  return invoke<void>("show_window");
+}

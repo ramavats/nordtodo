@@ -13,6 +13,7 @@ import {
   cn, formatDueDate, toDatetimeLocal, fromDatetimeLocal,
   priorityConfig, recurrenceLabel, sourceLabels
 } from "@/lib/utils";
+import { DateTimePicker } from "@/components/ui/DateTimePicker";
 
 export function TaskDetailPanel() {
   const { activeTaskId, closeDetailPanel } = useAppStore();
@@ -189,17 +190,9 @@ export function TaskDetailPanel() {
 
         {/* ── Due date ── */}
         <DetailField icon={<Calendar size={13} />} label="Due date">
-          <input
-            type="datetime-local"
-            defaultValue={toDatetimeLocal(task.dueAt)}
-            onBlur={(e) =>
-              handleFieldBlur("dueAt", fromDatetimeLocal(e.target.value) as any)
-            }
-            className={cn(
-              "w-full text-sm bg-surface-2 text-text rounded px-2 py-1",
-              "border border-border focus:border-accent outline-none transition-colors"
-            )}
-            data-testid="detail-due-date"
+          <DateTimePicker
+            value={task.dueAt ?? null}
+            onChange={(iso) => handleFieldBlur("dueAt", iso as any)}
           />
         </DetailField>
 
