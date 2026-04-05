@@ -119,6 +119,7 @@ export const useAppStore = create<AppState>()(
     setSearchOpen: (open) =>
       set((s) => {
         s.isSearchOpen = open;
+        s.isPaletteOpen = open;
         if (!open) s.searchQuery = "";
       }),
 

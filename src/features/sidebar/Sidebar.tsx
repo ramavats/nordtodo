@@ -1,13 +1,12 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Inbox, Sun, Calendar, CalendarDays, CheckCircle, Archive,
-  Flag, Hash, Plus, ChevronsLeft, Settings, AlignLeft,
+  Sun, Calendar, CheckCircle, Hash, ChevronsLeft, Settings, AlignLeft,
 } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { useTaskCounts, useTags } from "@/hooks/useTasks";
 import { cn } from "@/lib/utils";
-import type { SmartView, Tag } from "@/types";
+import type { SmartView } from "@/types";
 
 interface NavItem {
   id: SmartView | string;
@@ -18,14 +17,10 @@ interface NavItem {
 }
 
 const SYSTEM_VIEWS: NavItem[] = [
-  { id: "inbox", label: "Inbox", icon: Inbox, countKey: "inbox" },
   { id: "today", label: "Today", icon: Sun, countKey: "today" },
   { id: "upcoming", label: "Upcoming", icon: Calendar, countKey: "upcoming" },
-  { id: "overdue", label: "Overdue", icon: CalendarDays, countKey: "overdue", isDanger: true },
-  { id: "flagged", label: "Flagged", icon: Flag, countKey: "flagged" },
-  { id: "no_date", label: "No Date", icon: AlignLeft },
   { id: "completed", label: "Completed", icon: CheckCircle, countKey: "completed" },
-  { id: "archived", label: "Archived", icon: Archive },
+  { id: "all", label: "More", icon: AlignLeft },
 ];
 
 export function Sidebar() {
@@ -42,14 +37,14 @@ export function Sidebar() {
       animate={{ width: sidebarWidth }}
       transition={{ type: "spring", damping: 30, stiffness: 250 }}
       className={cn(
-        "flex flex-col h-full bg-surface border-r border-border overflow-hidden",
+        "flex flex-col h-full bg-surface/65 border-r border-border overflow-hidden",
         "flex-shrink-0 select-none relative z-sidebar"
       )}
       aria-label="Application navigation"
       data-testid="sidebar"
     >
       {/* ── Header ── */}
-      <div className="flex items-center justify-between px-3 pt-4 pb-3 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 pt-5 pb-4 flex-shrink-0">
         <AnimatePresence>
           {expanded && (
             <motion.div
@@ -61,7 +56,7 @@ export function Sidebar() {
               className="flex items-center gap-2 overflow-hidden"
             >
               <NordLogo />
-              <span className="text-sm font-semibold text-text truncate">Nord Todo</span>
+              <span className="text-xl font-medium text-text truncate">Nord Todo</span>
             </motion.div>
           )}
         </AnimatePresence>
@@ -84,19 +79,6 @@ export function Sidebar() {
           </button>
         )}
       </div>
-
-      {/* ── Expand button (collapsed state) ── */}
-      {!expanded && (
-        <button
-          onClick={toggle}
-          className="w-full flex justify-center py-1 text-text-faint hover:text-text hover:bg-surface-2 transition-colors"
-          aria-label="Expand sidebar"
-        >
-          <motion.div whileHover={{ x: 2 }} transition={{ type: "spring", stiffness: 400 }}>
-            <ChevronsLeft size={14} className="rotate-180" />
-          </motion.div>
-        </button>
-      )}
 
       {/* ── Navigation ── */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-2 space-y-0.5">
@@ -168,13 +150,13 @@ function NavRow({ item, isActive, expanded, count, onClick, isDanger, tagColor }
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       className={cn(
-        "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left",
+        "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left",
         "text-sm transition-colors duration-150 relative group",
         isActive
-          ? "bg-accent/15 text-accent font-medium"
+          ? "bg-surface-2 text-text font-medium"
           : isDanger
           ? "text-text-muted hover:text-error hover:bg-error/10"
-          : "text-text-muted hover:text-text hover:bg-surface-2"
+          : "text-text-muted hover:text-text hover:bg-surface-2/70"
       )}
       data-testid={`nav-${item.id}`}
       aria-current={isActive ? "page" : undefined}
@@ -212,9 +194,9 @@ function NavRow({ item, isActive, expanded, count, onClick, isDanger, tagColor }
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             className={cn(
-              "flex-shrink-0 text-xs rounded-full px-1.5 py-0 min-w-[1.2rem] text-center",
+              "flex-shrink-0 text-xs rounded-full px-2 py-0 min-w-[1.2rem] text-center",
               isActive
-                ? "bg-accent/25 text-accent"
+                ? "bg-accent/20 text-accent"
                 : isDanger
                 ? "bg-error/15 text-error"
                 : "bg-surface-3 text-text-faint"
@@ -288,13 +270,13 @@ function NordLogo() {
         width="16"
         height="16"
         rx="4"
-        fill="#3B4252"
-        stroke="#88C0D0"
+        fill="#2c3446"
+        stroke="#637ea1"
         strokeWidth="1.5"
       />
       <path
         d="M6 10L8.5 12.5L14 7"
-        stroke="#88C0D0"
+        stroke="#8fb2dc"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"

@@ -1,12 +1,12 @@
 import { memo, useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  Circle, CheckCircle2, Pin, RotateCcw, Flag, Calendar,
+  Circle, CheckCircle2, Pin, Calendar,
   MoreHorizontal, RefreshCw, Clock
 } from "lucide-react";
 import { useCompleteTask, useDeleteTask, useDuplicateTask, useUpdateTask } from "@/hooks/useTasks";
 import { useAppStore } from "@/store/appStore";
-import { cn, formatDueDate, priorityConfig, isOverdue, recurrenceLabel, sourceLabels } from "@/lib/utils";
+import { cn, formatDueDate, priorityConfig, isOverdue, sourceLabels } from "@/lib/utils";
 import type { Task } from "@/types";
 
 interface TaskCardProps {
@@ -29,7 +29,7 @@ export const TaskCard = memo(function TaskCard({
   const deleteTask = useDeleteTask();
   const duplicateTask = useDuplicateTask();
   const updateTask = useUpdateTask();
-  const { selectedTaskIds, toggleTaskSelection } = useAppStore();
+  const { selectedTaskIds } = useAppStore();
 
   const isSelected = selectedTaskIds.has(task.id);
   const isCompleted = task.status === "completed";
@@ -65,21 +65,21 @@ export const TaskCard = memo(function TaskCard({
     <motion.div
       layout
       layoutId={task.id}
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4, scale: 0.98 }}
       transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      whileHover={{ y: -1 }}
+      whileHover={{ backgroundColor: "rgba(68, 79, 103, 0.22)" }}
       className={cn(
-        "group relative flex items-start gap-3 px-3 py-2.5 rounded-lg overflow-visible",
+        "group relative flex items-start gap-3 px-1 py-4 overflow-visible",
         "cursor-pointer select-none",
-        "border transition-all duration-150",
+        "border-b border-border/60 transition-all duration-150",
         showMenu ? "z-40" : "z-0",
         isFocused
-          ? "bg-surface-2 border-accent/40 shadow-task-hover"
+          ? "bg-surface-2/50"
           : isSelected
-          ? "bg-accent/10 border-accent/30"
-          : "bg-surface border-border hover:border-border/80 hover:bg-surface-2 shadow-task",
+          ? "bg-accent/10"
+          : "bg-transparent",
         isCompleted && "opacity-60"
       )}
       onClick={() => {
@@ -141,7 +141,7 @@ export const TaskCard = memo(function TaskCard({
         {/* Title */}
         <div className="flex items-start gap-1.5">
           <span
-            className={cn(
+              className={cn(
               "text-base leading-snug",
               isCompleted
                 ? "line-through text-text-muted"
@@ -186,18 +186,18 @@ export const TaskCard = memo(function TaskCard({
             {task.tags.slice(0, 3).map((tag) => (
               <span
                 key={tag}
-                className="text-sm px-1.5 py-0 rounded bg-surface-3 text-text-faint"
+                className="text-xs px-1.5 py-0 rounded bg-surface-3 text-text-faint"
               >
                 {tag}
               </span>
             ))}
             {task.tags.length > 3 && (
-              <span className="text-sm text-text-faint">+{task.tags.length - 3}</span>
+              <span className="text-xs text-text-faint">+{task.tags.length - 3}</span>
             )}
 
             {/* Source badge (non-local) */}
             {task.source !== "local" && (
-              <span className="text-sm px-1.5 py-0 rounded bg-accent/10 text-accent">
+              <span className="text-xs px-1.5 py-0 rounded bg-accent/10 text-accent">
                 {sourceLabels[task.source] ?? task.source}
               </span>
             )}
@@ -206,7 +206,7 @@ export const TaskCard = memo(function TaskCard({
 
         {/* Notes preview */}
         {task.notes && !isCompleted && (
-          <p className="text-sm text-text-faint mt-1 truncate">{task.notes}</p>
+          <p className="text-xs text-text-faint mt-1 truncate">{task.notes}</p>
         )}
       </div>
 

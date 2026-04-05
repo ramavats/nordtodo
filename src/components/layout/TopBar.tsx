@@ -1,4 +1,10 @@
-import { Search, Command, Settings, PanelLeftOpen, PanelRight } from "lucide-react";
+import {
+  Search,
+  Settings,
+  PanelLeftOpen,
+  PanelRight,
+  Plus,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { useAppStore } from "@/store/appStore";
 import { useSidebarStore } from "@/store/sidebarStore";
@@ -19,7 +25,7 @@ const SMART_VIEW_LABELS: Record<string, string> = {
 };
 
 export function TopBar() {
-  const { activeView, setPaletteOpen, setSearchOpen, setSettingsOpen } = useAppStore();
+  const { activeView, setSearchOpen, setSettingsOpen } = useAppStore();
   const { toggle: toggleSidebar, expanded } = useSidebarStore();
   const { enterSlimMode } = useWindowStore();
   const { data: counts } = useTaskCounts();
@@ -29,9 +35,9 @@ export function TopBar() {
   return (
     <header
       className={cn(
-        "flex items-center h-12 px-4 gap-3",
+        "flex items-center h-16 px-6 gap-3",
         "border-b border-border",
-        "bg-surface flex-shrink-0 select-none"
+        "bg-surface/70 flex-shrink-0 select-none",
       )}
       data-testid="topbar"
     >
@@ -41,85 +47,86 @@ export function TopBar() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           onClick={toggleSidebar}
-          className="p-1.5 rounded-md text-text-muted hover:text-text hover:bg-surface-2 transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-accent bg-accent/12 hover:bg-accent/18 hover:text-accent transition-colors"
           title="Open sidebar"
           aria-label="Open sidebar"
           data-testid="topbar-sidebar-toggle"
         >
-          <PanelLeftOpen size={15} />
+          <PanelLeftOpen size={16} />
         </motion.button>
       )}
 
       {/* View title */}
-      <h1 className="text-sm font-semibold text-text-secondary flex-1 min-w-0 truncate">
+      <h1 className="text-2xl font-bold text-text-secondary flex-1 min-w-0 truncate tracking-tight align-middle">
         {viewLabel}
         {counts && activeView in counts && (
-          <span className="ml-2 text-text-faint font-normal text-xs">
+          <span className="ml-2 text-nord-nord3 font-normal text-xl align-middle">
             {(counts as unknown as Record<string, number>)[activeView]}
           </span>
         )}
       </h1>
 
       {/* Action buttons */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         {/* Search */}
         <button
           onClick={() => setSearchOpen(true)}
           className={cn(
-            "flex items-center gap-2 px-2.5 py-1.5 rounded-md",
-            "text-text-muted hover:text-text hover:bg-surface-2",
-            "text-xs transition-colors"
+            "flex items-center gap-2 px-3 py-2 rounded-lg min-w-0 sm:min-w-[150px] justify-start",
+            "text-text-muted hover:text-text hover:bg-surface-2/80",
+            "text-sm transition-colors",
           )}
           title={`Search (${modKey()}+F)`}
           data-testid="topbar-search-btn"
         >
-          <Search size={14} />
-          <span className="hidden sm:inline">Search</span>
-          <kbd className="hidden sm:inline">{modKey()}F</kbd>
+          <Search size={16} />
+          <span className="text-sm hidden sm:inline">Search</span>
         </button>
 
-        {/* Command palette */}
+        {/* New task */}
         <button
-          onClick={() => setPaletteOpen(true)}
+          onClick={() =>
+            document.dispatchEvent(new CustomEvent("nordtodo:focus-quickadd"))
+          }
           className={cn(
-            "flex items-center gap-2 px-2.5 py-1.5 rounded-md",
-            "text-text-muted hover:text-text hover:bg-surface-2",
-            "text-xs transition-colors"
+            "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg whitespace-nowrap",
+            "bg-accent/90 text-background hover:bg-accent",
+            "text-sm font-medium transition-colors",
           )}
-          title={`Command palette (${modKey()}+K)`}
-          data-testid="topbar-palette-btn"
+          title={`New task (${modKey()}+N)`}
+          data-testid="topbar-new-task-btn"
         >
-          <Command size={14} />
-          <kbd className="hidden sm:inline">{modKey()}K</kbd>
+          <Plus size={16} />
+          <span className="hidden sm:inline">New Task</span>
         </button>
 
         {/* Settings */}
         <button
           onClick={() => setSettingsOpen(true)}
           className={cn(
-            "p-1.5 rounded-md",
-            "text-text-muted hover:text-text hover:bg-surface-2",
-            "transition-colors"
+            "p-2 rounded-lg",
+            "text-text-muted hover:text-text hover:bg-surface-2/80",
+            "transition-colors",
           )}
           title={`Settings (${modKey()}+,)`}
           data-testid="topbar-settings-btn"
         >
-          <Settings size={14} />
+          <Settings size={16} />
         </button>
 
         {/* Dock to side */}
         <button
           onClick={enterSlimMode}
           className={cn(
-            "p-1.5 rounded-md",
+            "p-2 rounded-lg",
             "text-text-muted hover:text-accent hover:bg-accent/10",
-            "transition-colors"
+            "transition-colors",
           )}
           title={`Dock to side (${modKey()}+Shift+S)`}
           aria-label="Dock to side panel"
           data-testid="topbar-slim-btn"
         >
-          <PanelRight size={14} />
+          <PanelRight size={16} />
         </button>
       </div>
     </header>

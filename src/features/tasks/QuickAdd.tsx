@@ -119,20 +119,15 @@ export function QuickAdd() {
   return (
     <motion.div
       layout
-      className={cn(
-        "rounded-lg border transition-all duration-200",
-        isExpanded
-          ? "border-accent/50 bg-surface shadow-md"
-          : "border-border bg-surface hover:border-border-strong"
-      )}
+      className={cn("relative border-b border-border/70", isExpanded ? "z-30" : "z-0")}
       onBlur={handleBlur}
       data-testid="quick-add"
     >
       <form onSubmit={handleSubmit(onSubmit)}>
         {/* Input row */}
-        <div className="flex items-center gap-2 px-3 py-2.5">
+        <div className="flex items-center gap-2 px-0 py-3">
           <Plus
-            size={14}
+            size={18}
             className={cn(
               "flex-shrink-0 transition-colors",
               isExpanded ? "text-accent" : "text-text-faint"
@@ -164,7 +159,7 @@ export function QuickAdd() {
                 transition={{ type: "spring", stiffness: 400, damping: 20 }}
                 onClick={() => setShowPriorityPicker(!showPriorityPicker)}
                 className={cn(
-                  "flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors",
+                  "flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs transition-colors",
                   selectedPriority !== "none"
                     ? `${pCfg.color} ${pCfg.bgColor}`
                     : "text-text-faint hover:text-text hover:bg-surface-2"
@@ -193,7 +188,7 @@ export function QuickAdd() {
                   whileTap={{ scale: 0.95 }}
                   disabled={createTask.isPending}
                   className={cn(
-                    "px-3 py-1 rounded text-xs font-medium",
+                    "px-3 py-1.5 rounded-lg text-xs font-medium",
                     "bg-accent text-background hover:bg-accent-hover",
                     "transition-colors disabled:opacity-50"
                   )}
@@ -228,7 +223,7 @@ export function QuickAdd() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="px-3 pb-2 text-xs text-error overflow-hidden"
+              className="px-0 pb-2 text-xs text-error overflow-hidden"
             >
               {errors.title.message}
             </motion.p>
@@ -243,9 +238,9 @@ export function QuickAdd() {
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="overflow-hidden border-t border-border"
+              className="overflow-visible border-t border-border/70"
             >
-              <div className="px-3 py-2">
+              <div className="px-0 py-2">
                 <div className="flex items-center gap-1.5 text-xs text-text-faint mb-1.5">
                   <Calendar size={11} />
                   <span>Due date</span>
@@ -255,12 +250,12 @@ export function QuickAdd() {
                   onChange={(iso) => setSelectedDueAt(iso ?? new Date().toISOString())}
                   placeholder="Pick due date"
                 />
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-xs text-text-faint">Repeat</span>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span className="text-xs font-medium text-text-faint">Repeat</span>
                   <select
                     value={selectedRepeat}
                     onChange={(e) => setSelectedRepeat(e.target.value as RepeatPreset)}
-                    className="text-xs bg-surface-2 text-text border border-border rounded px-2 py-1 focus:border-accent outline-none"
+                    className="h-8 min-w-[140px] text-xs bg-surface-2 text-text border border-border rounded-lg px-2.5 focus:border-accent outline-none"
                   >
                     <option value="none">No repeat</option>
                     <option value="hourly">Hourly</option>
@@ -282,9 +277,9 @@ export function QuickAdd() {
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="overflow-hidden border-t border-border"
+              className="overflow-hidden border-t border-border/70"
             >
-              <div className="flex items-center gap-1 px-3 py-2">
+              <div className="flex items-center gap-1 px-0 py-2">
                 <span className="text-xs text-text-faint mr-2">Priority:</span>
                 {QUICK_PRIORITIES.map((p) => {
                   const cfg = priorityConfig[p];

@@ -50,7 +50,7 @@ export default {
           DEFAULT: nord.nord6,
           secondary: nord.nord5,
           muted: nord.nord4,
-          faint: nord.nord13,
+          faint: nord.nord4,
           inverse: nord.nord0,
         },
         border: {

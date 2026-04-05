@@ -89,7 +89,7 @@ export function AppShell() {
             <TaskView />
           </main>
 
-          {/* Detail panel — hidden in slim mode, slides in from right in normal mode */}
+          {/* Detail panel */}
           <AnimatePresence mode="wait">
             {isDetailPanelOpen && !isSlim && (
               <motion.aside

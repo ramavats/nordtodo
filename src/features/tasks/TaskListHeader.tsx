@@ -20,6 +20,10 @@ export function TaskListHeader() {
   const hasActiveFilters =
     filters.priority !== null || filters.tags.length > 0 || filters.search !== "";
 
+  if (!hasActiveFilters && !showFilters) {
+    return null;
+  }
+
   return (
     <div className="px-4 pb-2 flex-shrink-0">
       {/* Filter row */}

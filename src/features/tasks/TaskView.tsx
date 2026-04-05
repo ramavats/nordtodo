@@ -11,7 +11,8 @@ import { TaskSkeleton } from "@/components/ui/TaskSkeleton";
 import type { TaskQuery } from "@/types";
 
 export function TaskView() {
-  const { activeView, filters, openDetailPanel, productiveMode } = useAppStore();
+  const { activeView, filters, openDetailPanel, productiveMode } =
+    useAppStore();
   const [focusedId, setFocusedId] = useState<string | null>(null);
 
   const debouncedSearch = useDebounce(filters.search, 300);
@@ -19,7 +20,9 @@ export function TaskView() {
   // Build query from active view + filters
   const query: Partial<TaskQuery> = {
     smartView: activeView.startsWith("tag:") ? undefined : activeView,
-    tag: activeView.startsWith("tag:") ? activeView.replace("tag:", "") : undefined,
+    tag: activeView.startsWith("tag:")
+      ? activeView.replace("tag:", "")
+      : undefined,
     search: debouncedSearch || undefined,
     sortBy: filters.sortBy,
     sortDir: filters.sortDir,
@@ -34,8 +37,12 @@ export function TaskView() {
     if (activeView !== "today" || !productiveMode) return tasks;
 
     // Daily flow: only show 5 items. Urgent/high items always get first slots.
-    const priorityFirst = tasks.filter((t) => t.priority === "urgent" || t.priority === "high");
-    const others = tasks.filter((t) => t.priority !== "urgent" && t.priority !== "high");
+    const priorityFirst = tasks.filter(
+      (t) => t.priority === "urgent" || t.priority === "high",
+    );
+    const others = tasks.filter(
+      (t) => t.priority !== "urgent" && t.priority !== "high",
+    );
     return [...priorityFirst, ...others].slice(0, 5);
   }, [tasks, activeView, productiveMode]);
 
@@ -59,13 +66,13 @@ export function TaskView() {
           break;
       }
     },
-    [taskIds, focusedId, openDetailPanel]
+    [taskIds, focusedId, openDetailPanel],
   );
 
   return (
     <div className="flex flex-col h-full">
       {/* Quick-add (always visible at top) */}
-      <div className="px-4 pt-4 pb-2 flex-shrink-0">
+      <div className="px-6 pt-4 pb-0 flex-shrink-0">
         <QuickAdd />
       </div>
 
@@ -74,7 +81,7 @@ export function TaskView() {
 
       {/* Task list */}
       <div
-        className="flex-1 overflow-y-auto px-4 pb-4"
+        className="relative flex-1 overflow-y-auto px-6 pb-6"
         onKeyDown={handleKeyDown}
         tabIndex={0}
         role="list"
@@ -109,14 +116,15 @@ export function TaskView() {
                 ))}
               </AnimatePresence>
             </motion.div>
-            {activeView === "today" && productiveMode && (
-              <div className="sticky bottom-2 mt-3 flex justify-center pointer-events-none">
-                <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full bg-accent/15 text-accent border border-accent/30">
-                  Productive Mode On
-                </span>
-              </div>
-            )}
           </LayoutGroup>
+        )}
+
+        {activeView === "today" && productiveMode && (
+          <div className="absolute bottom-5 left-0 right-0 flex justify-center pointer-events-none">
+            <span className="text-xs uppercase tracking-wider px-5 py-2 rounded-full bg-accent/10 text-text-muted border border-accent/30">
+              Productive Mode On
+            </span>
+          </div>
         )}
       </div>
     </div>

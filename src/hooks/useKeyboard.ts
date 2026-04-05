@@ -15,6 +15,7 @@ export function useGlobalKeyboard() {
   const syncStartedAtRef = useRef<number | null>(null);
   const {
     togglePalette,
+    setPaletteOpen,
     setSearchOpen,
     setSettingsOpen,
     setProductiveMode,
@@ -142,7 +143,7 @@ export function useGlobalKeyboard() {
       if (!isInput) {
         // Escape — close open panels/palettes
         if (e.key === "Escape") {
-          if (isPaletteOpen) { togglePalette(); return; }
+          if (isPaletteOpen) { setSearchOpen(false); setPaletteOpen(false); return; }
           if (isSearchOpen) { setSearchOpen(false); return; }
           if (isDetailPanelOpen) { closeDetailPanel(); return; }
         }
@@ -156,7 +157,7 @@ export function useGlobalKeyboard() {
       }
     },
     [
-      togglePalette, setSearchOpen, setSettingsOpen, toggleSidebar,
+      togglePalette, setSearchOpen, setPaletteOpen, setSettingsOpen, toggleSidebar,
       isSearchOpen, isPaletteOpen, isDetailPanelOpen, closeDetailPanel,
       toggleWindowMode, hideWindow, productiveMode, setProductiveMode, prefs?.localOnlyMode,
     ]
