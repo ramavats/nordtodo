@@ -10,6 +10,7 @@ pub fn next_occurrence(task: &Task) -> Option<DateTime<Utc>> {
     let base = task.due_at.unwrap_or_else(Utc::now);
 
     let next = match rule.frequency {
+        RecurrenceFrequency::Hourly => base + Duration::hours(rule.interval as i64),
         RecurrenceFrequency::Daily => base + Duration::days(rule.interval as i64),
         RecurrenceFrequency::Weekly => base + Duration::weeks(rule.interval as i64),
         RecurrenceFrequency::Monthly => {
@@ -59,5 +60,16 @@ mod tests {
         let next = next_occurrence(&task).unwrap();
         let diff = next - task.due_at.unwrap();
         assert_eq!(diff.num_days(), 7);
+    }
+
+    #[test]
+    fn test_hourly_recurrence() {
+        let mut task = Task::new("Hourly check".to_string());
+        task.recurrence_rule = Some("FREQ=HOURLY;INTERVAL=1".to_string());
+        task.due_at = Some(Utc::now());
+
+        let next = next_occurrence(&task).unwrap();
+        let diff = next - task.due_at.unwrap();
+        assert_eq!(diff.num_hours(), 1);
     }
 }

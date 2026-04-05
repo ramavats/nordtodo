@@ -35,7 +35,7 @@ impl Default for UserPreferences {
             reduce_motion: false,
             startup_view: "today".to_string(),
             theme: "nord".to_string(),
-            local_only_mode: true,
+            local_only_mode: false,
             first_run_complete: false,
             sort_by: "due_at".to_string(),
             sort_dir: "asc".to_string(),

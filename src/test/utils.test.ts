@@ -77,6 +77,10 @@ describe("recurrenceLabel", () => {
     expect(recurrenceLabel("FREQ=DAILY;INTERVAL=1")).toBe("Daily");
   });
 
+  it("returns 'Hourly' for FREQ=HOURLY;INTERVAL=1", () => {
+    expect(recurrenceLabel("FREQ=HOURLY;INTERVAL=1")).toBe("Hourly");
+  });
+
   it("returns 'Every 2 days' for FREQ=DAILY;INTERVAL=2", () => {
     expect(recurrenceLabel("FREQ=DAILY;INTERVAL=2")).toBe("Every 2 days");
   });

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum RecurrenceFrequency {
+    Hourly,
     Daily,
     Weekly,
     Monthly,
@@ -16,6 +17,7 @@ pub enum RecurrenceFrequency {
 impl RecurrenceFrequency {
     pub fn to_rrule(&self) -> &'static str {
         match self {
+            RecurrenceFrequency::Hourly => "HOURLY",
             RecurrenceFrequency::Daily => "DAILY",
             RecurrenceFrequency::Weekly => "WEEKLY",
             RecurrenceFrequency::Monthly => "MONTHLY",
@@ -75,6 +77,7 @@ impl RecurrenceRule {
             match key {
                 "FREQ" => {
                     freq = Some(match val {
+                        "HOURLY" => RecurrenceFrequency::Hourly,
                         "DAILY" => RecurrenceFrequency::Daily,
                         "WEEKLY" => RecurrenceFrequency::Weekly,
                         "MONTHLY" => RecurrenceFrequency::Monthly,
@@ -115,6 +118,7 @@ impl RecurrenceRule {
     /// Human-readable description (e.g. "Every week on Mon, Wed, Fri")
     pub fn human_label(&self) -> String {
         let freq = match self.frequency {
+            RecurrenceFrequency::Hourly => "hour",
             RecurrenceFrequency::Daily => "day",
             RecurrenceFrequency::Weekly => "week",
             RecurrenceFrequency::Monthly => "month",
@@ -160,5 +164,12 @@ mod tests {
             by_month_day: None,
         };
         assert_eq!(rule.human_label(), "Every day");
+    }
+
+    #[test]
+    fn test_parse_hourly_rrule() {
+        let parsed = RecurrenceRule::from_rrule_string("FREQ=HOURLY;INTERVAL=1").unwrap();
+        assert_eq!(parsed.frequency, RecurrenceFrequency::Hourly);
+        assert_eq!(parsed.interval, 1);
     }
 }

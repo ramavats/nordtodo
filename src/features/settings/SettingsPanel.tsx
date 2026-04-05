@@ -13,6 +13,7 @@ type SettingsTab = "general" | "appearance" | "keyboard" | "integrations" | "dat
 export function SettingsPanel() {
   const { setSettingsOpen, setProductiveMode } = useAppStore();
   const { data: prefs } = usePreferences();
+  const isLocalOnly = !!prefs?.localOnlyMode;
   const updatePrefs = useUpdatePreferences();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [autoSyncInput, setAutoSyncInput] = useState("0");
@@ -44,6 +45,10 @@ export function SettingsPanel() {
   }, [prefs?.autoSyncSeconds]);
 
   const handleGoogleConnect = async () => {
+    if (isLocalOnly) {
+      toast.error("Turn off Local only mode in Settings to connect integrations");
+      return;
+    }
     if (!googleClientId.trim() || !googleClientSecret.trim()) {
       toast.error("Enter both your Google Client ID and Client Secret");
       return;
@@ -67,6 +72,10 @@ export function SettingsPanel() {
   };
 
   const handleGoogleExchange = async () => {
+    if (isLocalOnly) {
+      toast.error("Turn off Local only mode in Settings to connect integrations");
+      return;
+    }
     if (!authCode.trim()) { toast.error("Paste the authorization code first"); return; }
     setGoogleLoading(true);
     try {
@@ -84,6 +93,10 @@ export function SettingsPanel() {
   };
 
   const handleGoogleSync = async () => {
+    if (isLocalOnly) {
+      toast.error("Turn off Local only mode in Settings to sync integrations");
+      return;
+    }
     setGoogleLoading(true);
     setSyncResult(null);
     try {
@@ -271,7 +284,13 @@ export function SettingsPanel() {
                 >
                   <Toggle
                     checked={prefs.localOnlyMode}
-                    onChange={(v) => updatePrefs.mutate({ localOnlyMode: v })}
+                    onChange={(v) => {
+                      updatePrefs.mutate(v
+                        ? { localOnlyMode: true, autoSyncSeconds: 0 }
+                        : { localOnlyMode: false }
+                      );
+                      if (v) setAutoSyncInput("0");
+                    }}
                   />
                 </SettingRow>
               </>
@@ -316,15 +335,25 @@ export function SettingsPanel() {
                     value={autoSyncInput}
                     onChange={(e) => setAutoSyncInput(e.target.value)}
                     onBlur={() => {
+                      if (isLocalOnly) {
+                        setAutoSyncInput("0");
+                        return;
+                      }
                       const parsed = Number.parseInt(autoSyncInput, 10);
                       const safe = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
                       setAutoSyncInput(String(safe));
                       updatePrefs.mutate({ autoSyncSeconds: safe });
                     }}
+                    disabled={isLocalOnly}
                     className="w-24 text-sm bg-surface-3 border border-border rounded-lg px-3 py-1.5 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
                     aria-label="Auto sync seconds"
                   />
                 </SettingRow>
+                {isLocalOnly && (
+                  <p className="text-xs text-text-faint">
+                    Local only mode is enabled. Integration sync and connect actions are disabled.
+                  </p>
+                )}
 
                 {/* ── Google Tasks ── */}
                 <div className="rounded-xl border border-border bg-surface-2 overflow-hidden">
@@ -373,7 +402,7 @@ export function SettingsPanel() {
                         <div className="flex gap-2">
                           <button
                             onClick={handleGoogleSync}
-                            disabled={googleLoading}
+                            disabled={googleLoading || isLocalOnly}
                             className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-accent text-nord0 font-medium hover:bg-accent/90 disabled:opacity-50 transition-colors"
                           >
                             {googleLoading
@@ -429,7 +458,7 @@ export function SettingsPanel() {
                         {!showCodeInput ? (
                           <button
                             onClick={handleGoogleConnect}
-                            disabled={googleLoading || !googleClientId.trim()}
+                            disabled={googleLoading || isLocalOnly || !googleClientId.trim()}
                             className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-accent text-nord0 font-medium hover:bg-accent/90 disabled:opacity-50 transition-colors"
                           >
                             {googleLoading
@@ -453,7 +482,7 @@ export function SettingsPanel() {
                             <div className="flex gap-2">
                               <button
                                 onClick={handleGoogleExchange}
-                                disabled={googleLoading || !authCode.trim()}
+                                disabled={googleLoading || isLocalOnly || !authCode.trim()}
                                 className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg bg-accent text-nord0 font-medium hover:bg-accent/90 disabled:opacity-50 transition-colors"
                               >
                                 {googleLoading ? <Loader2 size={13} className="animate-spin" /> : null}

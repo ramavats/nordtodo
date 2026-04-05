@@ -76,6 +76,9 @@ On macOS, use `Cmd` in place of `Ctrl`.
 - Troubleshooting: [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)
 - Architecture: [ARCHITECTURE.md](./ARCHITECTURE.md)
 
+Google setup details:
+- See `Create Your Own Google OAuth App` in [docs/USER_GUIDE.md](./docs/USER_GUIDE.md) for Client ID and Client Secret setup.
+
 ## Important Notes
 
 - The app stores user data in the OS app data directory for the app identifier `com.nordtodo.app`.

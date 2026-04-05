@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { useAppStore } from "@/store/appStore";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { useWindowStore } from "@/store/windowStore";
+import { usePreferences } from "@/hooks/usePreferences";
 import * as api from "@/lib/tauriApi";
 import toast from "react-hot-toast";
 
@@ -24,6 +25,7 @@ export function useGlobalKeyboard() {
     closeDetailPanel,
     isQuickAddFocused,
   } = useAppStore();
+  const { data: prefs } = usePreferences();
   const { toggle: toggleSidebar } = useSidebarStore();
   const { toggleMode: toggleWindowMode, hideWindow } = useWindowStore();
 
@@ -93,6 +95,10 @@ export function useGlobalKeyboard() {
       // Cmd/Ctrl+Shift+G - Sync integrations (Google Tasks)
       if (isMod && e.shiftKey && e.key.toLowerCase() === "g") {
         e.preventDefault();
+        if (prefs?.localOnlyMode) {
+          toast.error("Turn off Local only mode in Settings to sync integrations", { id: "integration-sync" });
+          return;
+        }
         // Recover if a previous sync flag got stuck for too long.
         if (
           syncInFlightRef.current &&
@@ -152,7 +158,7 @@ export function useGlobalKeyboard() {
     [
       togglePalette, setSearchOpen, setSettingsOpen, toggleSidebar,
       isSearchOpen, isPaletteOpen, isDetailPanelOpen, closeDetailPanel,
-      toggleWindowMode, hideWindow, productiveMode, setProductiveMode,
+      toggleWindowMode, hideWindow, productiveMode, setProductiveMode, prefs?.localOnlyMode,
     ]
   );
 

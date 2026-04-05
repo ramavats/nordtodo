@@ -46,7 +46,7 @@ export default function App() {
   // Auto sync Google Tasks on user-defined interval (seconds).
   useEffect(() => {
     const seconds = prefs?.autoSyncSeconds ?? 0;
-    if (seconds <= 0) return;
+    if (seconds <= 0 || prefs?.localOnlyMode) return;
 
     const intervalMs = Math.max(1, seconds) * 1000;
     const tick = async () => {
@@ -67,7 +67,7 @@ export default function App() {
 
     const id = window.setInterval(() => { void tick(); }, intervalMs);
     return () => window.clearInterval(id);
-  }, [prefs?.autoSyncSeconds, qc]);
+  }, [prefs?.autoSyncSeconds, prefs?.localOnlyMode, qc]);
 
   return <AppShell />;
 }

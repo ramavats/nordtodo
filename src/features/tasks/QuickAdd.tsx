@@ -11,6 +11,22 @@ import { priorityConfig } from "@/lib/utils";
 import { DateTimePicker } from "@/components/ui/DateTimePicker";
 
 const QUICK_PRIORITIES: Priority[] = ["urgent", "high", "medium", "none"];
+type RepeatPreset = "none" | "hourly" | "daily" | "weekly" | "monthly";
+
+function repeatPresetToRRule(preset: RepeatPreset): string | undefined {
+  switch (preset) {
+    case "hourly":
+      return "FREQ=HOURLY;INTERVAL=1";
+    case "daily":
+      return "FREQ=DAILY;INTERVAL=1";
+    case "weekly":
+      return "FREQ=WEEKLY;INTERVAL=1";
+    case "monthly":
+      return "FREQ=MONTHLY;INTERVAL=1";
+    default:
+      return undefined;
+  }
+}
 
 export function QuickAdd() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -18,6 +34,7 @@ export function QuickAdd() {
   const [selectedPriority, setSelectedPriority] = useState<Priority>("none");
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
   const [selectedDueAt, setSelectedDueAt] = useState<string | null>(new Date().toISOString());
+  const [selectedRepeat, setSelectedRepeat] = useState<RepeatPreset>("none");
 
   const createTask = useCreateTask();
   const { setQuickAddFocused } = useAppStore();
@@ -55,15 +72,17 @@ export function QuickAdd() {
         ...data,
         priority: selectedPriority,
         dueAt: selectedDueAt ?? undefined,
+        recurrenceRule: repeatPresetToRRule(selectedRepeat),
       });
       reset();
       setIsExpanded(false);
       setSelectedPriority("none");
       setSelectedDueAt(new Date().toISOString());
+      setSelectedRepeat("none");
       setShowPriorityPicker(false);
       inputRef.current?.blur();
     },
-    [createTask, selectedPriority, selectedDueAt, reset]
+    [createTask, selectedPriority, selectedDueAt, selectedRepeat, reset]
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -72,6 +91,7 @@ export function QuickAdd() {
       setIsExpanded(false);
       setSelectedPriority("none");
       setSelectedDueAt(new Date().toISOString());
+      setSelectedRepeat("none");
       setShowPriorityPicker(false);
       inputRef.current?.blur();
     }
@@ -189,6 +209,7 @@ export function QuickAdd() {
                     setIsExpanded(false);
                     setSelectedPriority("none");
                     setSelectedDueAt(new Date().toISOString());
+                    setSelectedRepeat("none");
                   }}
                   className="p-1 rounded text-text-faint hover:text-text hover:bg-surface-2 transition-colors"
                   data-testid="quick-add-cancel"
@@ -234,6 +255,20 @@ export function QuickAdd() {
                   onChange={(iso) => setSelectedDueAt(iso ?? new Date().toISOString())}
                   placeholder="Pick due date"
                 />
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs text-text-faint">Repeat</span>
+                  <select
+                    value={selectedRepeat}
+                    onChange={(e) => setSelectedRepeat(e.target.value as RepeatPreset)}
+                    className="text-xs bg-surface-2 text-text border border-border rounded px-2 py-1 focus:border-accent outline-none"
+                  >
+                    <option value="none">No repeat</option>
+                    <option value="hourly">Hourly</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </div>
               </div>
             </motion.div>
           )}

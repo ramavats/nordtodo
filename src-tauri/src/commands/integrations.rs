@@ -88,6 +88,17 @@ fn get_client_secret(conn: &rusqlite::Connection) -> Result<String, AppError> {
     Ok(prefs.google_client_secret)
 }
 
+fn ensure_integrations_enabled(conn: &rusqlite::Connection) -> Result<(), AppError> {
+    use crate::repositories::PreferencesRepository;
+    let prefs = PreferencesRepository.get(conn)?;
+    if prefs.local_only_mode {
+        return Err(AppError::Config(
+            "Local only mode is enabled. Turn it off in Settings to use integrations.".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 fn load_credentials(conn: &rusqlite::Connection) -> Result<Option<GoogleCredentials>, AppError> {
     let result: rusqlite::Result<String> = conn.query_row(
         "SELECT credentials_json FROM integration_accounts WHERE provider = 'google_calendar' LIMIT 1",
@@ -239,6 +250,7 @@ fn clear_remote_update_retry(local_id: &str) {
 #[tauri::command]
 pub fn google_auth_url(db: State<DbConnection>) -> Result<AuthUrlResponse, AppError> {
     let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+    ensure_integrations_enabled(&conn)?;
     let client_id = get_client_id(&conn)?;
     let state = Uuid::new_v4().to_string();
     let url = build_auth_url(&client_id);
@@ -250,6 +262,7 @@ pub fn google_auth_url(db: State<DbConnection>) -> Result<AuthUrlResponse, AppEr
 #[tauri::command]
 pub fn google_exchange_code(db: State<DbConnection>, code: String) -> Result<IntegrationStatus, AppError> {
     let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+    ensure_integrations_enabled(&conn)?;
     let client_id = get_client_id(&conn)?;
     let client_secret = get_client_secret(&conn)?;
 
@@ -328,6 +341,10 @@ pub fn google_disconnect(db: State<DbConnection>) -> Result<(), AppError> {
 /// - Marks completed tasks as completed on both sides
 #[tauri::command]
 pub async fn sync_google_tasks(db: State<'_, DbConnection>) -> Result<SyncResult, AppError> {
+    {
+        let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
+        ensure_integrations_enabled(&conn)?;
+    }
     let db = db.inner().clone();
     tauri::async_runtime::spawn_blocking(move || sync_google_tasks_inner(&db))
         .await

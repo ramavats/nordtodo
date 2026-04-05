@@ -105,6 +105,7 @@ export function recurrenceLabel(rrule: string | null | undefined): string {
   const interval = parseInt(intervalMatch?.[1] ?? "1");
 
   const freqLabel: Record<string, string> = {
+    HOURLY: interval === 1 ? "Hourly" : `Every ${interval} hours`,
     DAILY: interval === 1 ? "Daily" : `Every ${interval} days`,
     WEEKLY: interval === 1 ? "Weekly" : `Every ${interval} weeks`,
     MONTHLY: interval === 1 ? "Monthly" : `Every ${interval} months`,

@@ -45,12 +45,38 @@ On macOS, use `Cmd` instead of `Ctrl`.
 
 ## 5. Google Tasks Integration
 
+### Create Your Own Google OAuth App
+
+If you want your own Google Client ID and Client Secret, do this once:
+
+1. Open Google Cloud Console: `https://console.cloud.google.com/`
+2. Create a new project (or select an existing one).
+3. Go to `APIs & Services` -> `Library`.
+4. Search for `Google Tasks API` and click `Enable`.
+5. Go to `APIs & Services` -> `OAuth consent screen`.
+6. Choose `External` (or `Internal` for Workspace org), then continue.
+7. Fill required app info (app name, support email, developer email).
+8. Save and continue through scopes and test users.
+9. Add your Google account under `Test users` if app is in testing mode.
+10. Go to `APIs & Services` -> `Credentials`.
+11. Click `Create Credentials` -> `OAuth client ID`.
+12. Choose application type `Desktop app`.
+13. Give it a name and create.
+14. Copy the generated `Client ID` and `Client Secret`.
+
+Notes:
+- You can leave redirect URI handling to the app flow used by NordTodo.
+- If Google shows "App not verified", continue with your test user account.
+
 ### Connect
 
 1. Open Settings.
 2. Go to Integrations.
-3. Enter Google OAuth Client ID and Client Secret.
-4. Start connection and complete authorization.
+3. Paste your Google OAuth Client ID and Client Secret.
+4. Click `Connect Google Tasks`.
+5. Browser opens Google sign-in and consent.
+6. Google shows an authorization code.
+7. Copy that code into NordTodo and complete connection.
 5. Run a sync.
 
 ### What Sync Does

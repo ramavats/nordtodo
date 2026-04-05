@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTask, useUpdateTask, useDeleteTask, useDuplicateTask } from "@/hooks/useTasks";
+import { useTask, useUpdateTask, useDeleteTask, useDuplicateTask, useCompleteTask } from "@/hooks/useTasks";
 import { useAppStore } from "@/store/appStore";
 import { UpdateTaskSchema, type UpdateTaskInput, type Priority } from "@/types";
 import {
@@ -15,10 +15,45 @@ import {
 } from "@/lib/utils";
 import { DateTimePicker } from "@/components/ui/DateTimePicker";
 
+type RepeatPreset = "none" | "hourly" | "daily" | "weekly" | "monthly";
+
+function rruleToRepeatPreset(rrule: string | null | undefined): RepeatPreset {
+  if (!rrule) return "none";
+  const freqMatch = rrule.match(/FREQ=(\w+)/);
+  switch (freqMatch?.[1]) {
+    case "HOURLY":
+      return "hourly";
+    case "DAILY":
+      return "daily";
+    case "WEEKLY":
+      return "weekly";
+    case "MONTHLY":
+      return "monthly";
+    default:
+      return "none";
+  }
+}
+
+function repeatPresetToRRule(preset: RepeatPreset): string | null {
+  switch (preset) {
+    case "hourly":
+      return "FREQ=HOURLY;INTERVAL=1";
+    case "daily":
+      return "FREQ=DAILY;INTERVAL=1";
+    case "weekly":
+      return "FREQ=WEEKLY;INTERVAL=1";
+    case "monthly":
+      return "FREQ=MONTHLY;INTERVAL=1";
+    default:
+      return null;
+  }
+}
+
 export function TaskDetailPanel() {
   const { activeTaskId, closeDetailPanel } = useAppStore();
   const { data: task, isLoading } = useTask(activeTaskId);
   const updateTask = useUpdateTask();
+  const completeTask = useCompleteTask();
   const deleteTask = useDeleteTask();
   const duplicateTask = useDuplicateTask();
 
@@ -169,12 +204,13 @@ export function TaskDetailPanel() {
         {/* ── Complete / Reopen ── */}
         <div>
           <button
-            onClick={() =>
-              updateTask.mutate({
-                id: task.id,
-                input: { status: isCompleted ? "pending" : "completed" },
-              })
-            }
+            onClick={() => {
+              if (isCompleted) {
+                updateTask.mutate({ id: task.id, input: { status: "pending" } });
+                return;
+              }
+              completeTask.mutate(task.id);
+            }}
             className={cn(
               "flex items-center gap-2 text-sm px-3 py-1.5 rounded-md transition-colors",
               isCompleted
@@ -230,13 +266,29 @@ export function TaskDetailPanel() {
         </DetailField>
 
         {/* ── Recurrence ── */}
-        {task.recurrenceRule && (
-          <DetailField icon={<RefreshCw size={13} />} label="Recurrence">
-            <span className="text-sm text-text-muted">
-              {recurrenceLabel(task.recurrenceRule)}
-            </span>
-          </DetailField>
-        )}
+        <DetailField icon={<RefreshCw size={13} />} label="Repeat">
+          <div className="flex items-center gap-2">
+            <select
+              value={rruleToRepeatPreset(task.recurrenceRule)}
+              onChange={(e) =>
+                updateTask.mutate({
+                  id: task.id,
+                  input: { recurrenceRule: repeatPresetToRRule(e.target.value as RepeatPreset) },
+                })
+              }
+              className="text-sm bg-surface-2 text-text border border-border rounded px-2 py-1 focus:border-accent outline-none"
+            >
+              <option value="none">No repeat</option>
+              <option value="hourly">Hourly</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            {task.recurrenceRule && (
+              <span className="text-xs text-text-faint">{recurrenceLabel(task.recurrenceRule)}</span>
+            )}
+          </div>
+        </DetailField>
 
         {/* ── Estimate ── */}
         <DetailField icon={<Clock size={13} />} label="Estimate (min)">
