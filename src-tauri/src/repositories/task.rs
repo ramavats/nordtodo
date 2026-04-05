@@ -332,6 +332,9 @@ impl TaskRepository {
             return self.find_by_id(conn, id);
         }
 
+        // Local edits to Google-linked tasks should be pushed on next sync.
+        sets.push("sync_status = CASE WHEN source = 'google_calendar' THEN 'pending_push' ELSE sync_status END".to_string());
+
         // Always update updated_at
         let now = Utc::now().to_rfc3339();
         params_vec.push(Box::new(now));

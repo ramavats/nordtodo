@@ -13,6 +13,8 @@ use tauri::State;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{SecondsFormat, Utc};
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
 use crate::db::DbConnection;
 use crate::errors::AppError;
 use crate::integrations::oauth::{
@@ -185,6 +187,50 @@ fn is_remote_task_gone_or_inaccessible(err: &AppError) -> bool {
 
 use chrono::DateTime;
 
+#[derive(Debug, Clone)]
+struct UpdateRetryState {
+    failures: u32,
+    next_retry_epoch: i64,
+}
+
+static PUSH_UPDATE_RETRY_STATE: LazyLock<Mutex<HashMap<String, UpdateRetryState>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn can_attempt_remote_update(local_id: &str, now_epoch: i64) -> bool {
+    let Ok(map) = PUSH_UPDATE_RETRY_STATE.lock() else {
+        return true;
+    };
+
+    match map.get(local_id) {
+        Some(state) => now_epoch >= state.next_retry_epoch,
+        None => true,
+    }
+}
+
+fn register_remote_update_failure(local_id: &str, now_epoch: i64) {
+    let Ok(mut map) = PUSH_UPDATE_RETRY_STATE.lock() else {
+        return;
+    };
+
+    let entry = map.entry(local_id.to_string()).or_insert(UpdateRetryState {
+        failures: 0,
+        next_retry_epoch: now_epoch,
+    });
+    entry.failures = entry.failures.saturating_add(1);
+
+    // Exponential backoff: 30s, 60s, 120s, ... up to 1800s (30 min)
+    let shift = entry.failures.saturating_sub(1).min(6);
+    let cooldown_secs = (30_i64 << shift).min(1800);
+    entry.next_retry_epoch = now_epoch + cooldown_secs;
+}
+
+fn clear_remote_update_retry(local_id: &str) {
+    let Ok(mut map) = PUSH_UPDATE_RETRY_STATE.lock() else {
+        return;
+    };
+    map.remove(local_id);
+}
+
 // ─── Tauri commands ───────────────────────────────────────────────────────────
 
 /// Step 1: Generate an OAuth2 authorization URL.
@@ -311,7 +357,9 @@ fn sync_google_tasks_inner(db: &DbConnection) -> Result<SyncResult, AppError> {
 
     let adapter = GoogleTasksAdapter::new(client_id);
     // Keep one canonical UTC format ("...Z") so SQL string/date comparisons are stable.
-    let now = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
+    let now_dt = Utc::now();
+    let now = now_dt.to_rfc3339_opts(SecondsFormat::Secs, true);
+    let now_epoch = now_dt.timestamp();
 
     let mut imported = 0i64;
     let mut updated = 0i64;
@@ -508,7 +556,7 @@ fn sync_google_tasks_inner(db: &DbConnection) -> Result<SyncResult, AppError> {
                 "SELECT id, source_metadata FROM tasks
                  WHERE source = 'google_calendar'
                  AND status != 'deleted'
-                 AND (last_synced_at IS NULL OR datetime(updated_at) > datetime(last_synced_at))",
+                 AND sync_status = 'pending_push'",
             )
             .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -520,6 +568,9 @@ fn sync_google_tasks_inner(db: &DbConnection) -> Result<SyncResult, AppError> {
     };
 
     for (local_id, meta_json) in pending_update_rows {
+        if !can_attempt_remote_update(&local_id, now_epoch) {
+            continue;
+        }
         let meta: GoogleSourceMeta = serde_json::from_str(&meta_json)
             .map_err(|e| AppError::Integration(format!("Metadata parse error: {e}")))?;
         let task = {
@@ -530,11 +581,19 @@ fn sync_google_tasks_inner(db: &DbConnection) -> Result<SyncResult, AppError> {
             if is_remote_task_gone_or_inaccessible(&err) {
                 let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
                 TaskRepository.soft_delete(&conn, &local_id)?;
+                clear_remote_update_retry(&local_id);
                 updated += 1;
                 continue;
             }
-            return Err(err);
+            register_remote_update_failure(&local_id, now_epoch);
+            log::warn!(
+                "Skipping remote update for task {} due to error (will retry with backoff): {}",
+                local_id,
+                err
+            );
+            continue;
         }
+        clear_remote_update_retry(&local_id);
 
         let conn = db.lock().map_err(|_| AppError::Internal("DB lock poisoned".to_string()))?;
         conn.execute(
