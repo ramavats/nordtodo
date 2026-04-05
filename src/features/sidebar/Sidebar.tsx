@@ -81,7 +81,7 @@ export function Sidebar() {
       </div>
 
       {/* ── Navigation ── */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-2 space-y-0.5">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-3 space-y-1.5">
         {/* System views */}
         {SYSTEM_VIEWS.map((item) => (
           <NavRow
@@ -115,7 +115,7 @@ export function Sidebar() {
       </div>
 
       {/* ── Footer ── */}
-      <div className="flex-shrink-0 border-t border-border p-2">
+      <div className="flex-shrink-0 border-t border-border p-3">
         <NavRow
           item={{ id: "__settings", label: "Settings", icon: Settings }}
           isActive={false}
@@ -150,8 +150,9 @@ function NavRow({ item, isActive, expanded, count, onClick, isDanger, tagColor }
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       className={cn(
-        "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left",
+        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left",
         "text-sm transition-colors duration-150 relative group",
+        !expanded && "justify-center py-3.5",
         isActive
           ? "bg-surface-2 text-text font-medium"
           : isDanger

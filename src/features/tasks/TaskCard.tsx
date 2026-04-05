@@ -93,22 +93,6 @@ export const TaskCard = memo(function TaskCard({
       aria-label={`Task: ${task.title}`}
       data-testid={`task-card-${task.id}`}
     >
-      {/* Priority indicator — left edge */}
-      {task.priority !== "none" && !isCompleted && (
-        <div
-          className={cn(
-            "absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full",
-            `${pCfg.dotClass}`
-          )}
-          style={{
-            background:
-              task.priority === "urgent" ? "#BF616A"
-              : task.priority === "high" ? "#D08770"
-              : "#EBCB8B",
-          }}
-        />
-      )}
-
       {/* Completion checkbox */}
       <motion.button
         onClick={handleComplete}
@@ -140,6 +124,18 @@ export const TaskCard = memo(function TaskCard({
       <div className="flex-1 min-w-0">
         {/* Title */}
         <div className="flex items-start gap-1.5">
+          {task.priority !== "none" && !isCompleted && (
+            <span
+              className="mt-[7px] inline-block h-1.5 w-1.5 rounded-full flex-shrink-0"
+              style={{
+                background:
+                  task.priority === "urgent" ? "#BF616A"
+                  : task.priority === "high" ? "#D08770"
+                  : "#EBCB8B",
+              }}
+              aria-hidden="true"
+            />
+          )}
           <span
               className={cn(
               "text-base leading-snug",
