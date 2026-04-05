@@ -3,6 +3,10 @@
 NordTodo is a desktop task manager built with Tauri v2, React, TypeScript, and Rust.  
 It is designed for fast local-first task management with optional Google Tasks sync.
 
+<img width="1920" height="1080" alt="screenshot" src="https://github.com/user-attachments/assets/a868d126-f6b8-4323-a6a9-8b46b2b48504" />
+
+
+
 ## Why NordTodo
 
 - Offline-first architecture with local SQLite storage
