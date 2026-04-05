@@ -35,7 +35,7 @@ pub async fn set_window_mode<R: Runtime>(
                 .map_err(|e| e.to_string())?
                 .or_else(|| window.primary_monitor().ok().flatten());
 
-            let (screen_width, screen_height) = if let Some(m) = monitor {
+            let (screen_width, _screen_height) = if let Some(m) = monitor {
                 let size = m.size();
                 (size.width as f64, size.height as f64)
             } else {
